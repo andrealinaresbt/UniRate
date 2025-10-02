@@ -21,6 +21,21 @@ export const ReviewService = {
     }
   },
 
+  // Crear nueva reseña
+createReview: async (reviewData) => {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert([reviewData])
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+},
+
   // Obtener materias
   getAllCourses: async () => {
     try {
@@ -36,3 +51,4 @@ export const ReviewService = {
     }
   }
 };
+

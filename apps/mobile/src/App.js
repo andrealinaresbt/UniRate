@@ -3,9 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from './screens/HomeScreen';
-import LoginScreen from './screens/LoginScreen';  
- // <-- nueva importación
-import { AuthProvider } from './services/AuthContext'; // <-- envuelve todo con contexto
+import LoginScreen from './screens/LoginScreen';
+import NuevaResenaScreen from './screens/NuevaResenaScreen';
+import { AuthProvider } from './services/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -14,18 +14,29 @@ export default function App() {
     <AuthProvider>
       <NavigationContainer>
         <Stack.Navigator>
-          <Stack.Screen 
+          {/* Home */}
+          <Stack.Screen
             name="Home"
             component={HomeScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen 
+
+          {/* Login (de develop) */}
+          <Stack.Screen
             name="Login"
             component={LoginScreen}
             options={{ headerShown: false }}
+          />
+
+          {/* Nueva Reseña (HU5) */}
+          <Stack.Screen
+            name="NuevaResena"
+            component={NuevaResenaScreen}
+            options={{ title: 'Publicar Reseña' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
   );
 }
+

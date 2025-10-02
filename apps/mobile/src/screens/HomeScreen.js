@@ -64,8 +64,11 @@ export default function HomeScreen({ navigation }) {
     setLoading(false)
   }
 
+  // Temporal: NO navegamos a "Professor" hasta que exista la pantalla
   const handleProfessorPress = (professor) => {
-    navigation.navigate('Professor', { professorId: professor.id })
+    Alert.alert('Profesor', `${professor.full_name}\n(la vista de perfil aún no está lista)`)
+    // Cuando exista la pantalla:
+    // navigation.navigate('Professor', { professorId: professor.id })
   }
 
   const renderProfessorItem = ({ item }) => (
@@ -79,6 +82,8 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar />
+
+      {/* Menú lateral (Modal) */}
       <Modal
         animationType="fade"
         transparent
@@ -91,22 +96,43 @@ export default function HomeScreen({ navigation }) {
 
             {!user ? (
               <>
-                <MenuItem text="Iniciar sesión" onPress={() => { setMenuVisible(false); navigation.navigate('Login') }} />
+                <MenuItem
+                  text="Iniciar sesión"
+                  onPress={() => { setMenuVisible(false); navigation.navigate('Login') }}
+                />
                 <MenuItem text="Configuración" onPress={() => { setMenuVisible(false) }} />
               </>
             ) : (
               <>
                 <MenuItem text="Mi Perfil" onPress={() => { setMenuVisible(false) }} />
                 <MenuItem text="Ver Materias" onPress={() => { setMenuVisible(false) }} />
+
+                {/* ✅ NUEVO: Publicar Reseña (HU5) */}
+                <MenuItem
+                  text="Publicar Reseña"
+                  onPress={() => {
+                    setMenuVisible(false)
+                    navigation.navigate('NuevaResena')
+                  }}
+                />
+
                 <MenuItem text="Configuración" onPress={() => { setMenuVisible(false) }} />
+
                 {isAdmin && (
                   <>
                     <View style={{ height: 12 }} />
                     <Text style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>Admin</Text>
-                    <MenuItem text="Panel admin" onPress={() => { setMenuVisible(false); navigation.navigate('Admin') }} />
-                    <MenuItem text="Gestión de profesores" onPress={() => { setMenuVisible(false); navigation.navigate('AdminProfessors') }} />
+                    <MenuItem
+                      text="Panel admin"
+                      onPress={() => { setMenuVisible(false); navigation.navigate('Admin') }}
+                    />
+                    <MenuItem
+                      text="Gestión de profesores"
+                      onPress={() => { setMenuVisible(false); navigation.navigate('AdminProfessors') }}
+                    />
                   </>
                 )}
+
                 <MenuItem
                   text="Cerrar Sesión"
                   onPress={async () => {
@@ -121,12 +147,14 @@ export default function HomeScreen({ navigation }) {
         </Pressable>
       </Modal>
 
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={() => setMenuVisible(true)}>
           <MenuIcon />
         </TouchableOpacity>
       </View>
 
+      {/* Contenido principal */}
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 24 }}
