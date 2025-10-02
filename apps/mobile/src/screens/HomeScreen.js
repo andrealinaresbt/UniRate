@@ -58,6 +58,7 @@ export default function HomeScreen({ navigation }) {
     // Navegar a pantalla de perfil del profesor
     navigation.navigate('Professor', { professorId: professor.id });
   };
+  
 
   const renderProfessorItem = ({ item }) => (
     <TouchableOpacity 
@@ -85,7 +86,15 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.menuContainer}>
             <Text style={styles.menuTitle}>Opciones</Text>
             <MenuItem text="Mi Perfil" onPress={() => { setMenuVisible(false); }} />
+            {/* Navegador para ver materias */}
             <MenuItem text="Ver Materias" onPress={() => { setMenuVisible(false); }} />
+              <MenuItem
+              text="Publicar Reseña"
+              onPress={() => {
+              setMenuVisible(false);
+              navigation.navigate('NuevaResena');
+            }}
+            />
             <MenuItem text="Configuración" onPress={() => { setMenuVisible(false); }} />
             <MenuItem text="Cerrar Sesión" onPress={() => { setMenuVisible(false); }} />
           </View>

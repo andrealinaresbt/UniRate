@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from './screens/HomeScreen';
+import NuevaResenaScreen from './screens/NuevaResenaScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -14,6 +15,11 @@ export default function App() {
           name="Home"
           component={HomeScreen}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="NuevaResena"
+          component={NuevaResenaScreen}
+          options={{ title: 'Nueva Reseña' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
