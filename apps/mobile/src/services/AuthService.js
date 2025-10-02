@@ -36,7 +36,7 @@ export async function getSession() {
 export async function fetchIsAdmin(userId) {
   if (!userId) return false
   const { data, error } = await supabase
-    .from('user') // tu tabla
+    .from('users') // tu tabla
     .select('has_unlimited_access')
     .eq('id', userId)
     .maybeSingle()
