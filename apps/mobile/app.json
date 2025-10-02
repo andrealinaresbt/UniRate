@@ -4,6 +4,7 @@
     "slug": "Uni",
     "version": "1.0.0",
     "orientation": "portrait",
+    
     "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -26,4 +27,5 @@
       "favicon": "./src/assets/favicon.png"
     }
   }
+
 }
