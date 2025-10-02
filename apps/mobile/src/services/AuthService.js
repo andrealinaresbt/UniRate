@@ -1,35 +1,49 @@
-import { supabase } from './supabaseClient';
-import { isUnimetEmail } from '../utils/email';
+// services/AuthService.js
+import { supabase } from './supabaseClient'
+import { isUnimetEmail } from '../utils/email'
 
+// ------ AUTH ------
+// services/AuthService.js
 export async function login(email, password) {
-  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.');
-  return supabase.auth.signInWithPassword({ email, password });
+  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.')
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw new Error(error.message || 'No se pudo iniciar sesión.')
+  if (!data?.session) throw new Error('Supabase no devolvió sesión.')
+  return data.session
 }
 
+
 export async function register(email, password) {
-  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.');
-  return supabase.auth.signUp({ email, password });
+  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.')
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw new Error(error.message || 'No se pudo registrar.')
+  return data
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(error.message);
-}
-// Enviar correo de recuperación
-export async function resetPassword(email) {
-  if (!isUnimetEmail(email)) {
-    throw new Error('Dominio de email no permitido.');
-  }
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'myapp://reset-password' // cambia a tu esquema o URL configurada
-  });
-  if (error) throw error;
-  return data;
+  const { error } = await supabase.auth.signOut()
+  if (error) throw new Error(error.message)
 }
 
-// Actualizar la contraseña luego de abrir el link
-export async function updatePassword(newPassword) {
-  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) throw error;
-  return data;
+// ------ HELPERS DE SESIÓN ------
+export async function getSession() {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw new Error(error.message)
+  return data.session ?? null
+}
+
+
+export async function fetchIsAdmin(userId) {
+  if (!userId) return false
+  const { data, error } = await supabase
+    .from('user') // tu tabla
+    .select('has_unlimited_access')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return Boolean(data?.has_unlimited_access)
+}
+// services/AuthService.js
+export function onAuthStateChange(cb) {
+  return supabase.auth.onAuthStateChange((event, session) => cb(event, session ?? null))
 }

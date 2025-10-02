@@ -1,40 +1,62 @@
 // services/AuthContext.js
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from './supabaseClient';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { getSession, onAuthStateChange } from './AuthService'
 
-const AuthContext = createContext(null);
+const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState(null)
+  const lastTokenRef = useRef(null)
 
   useEffect(() => {
-    let active = true;
+    let alive = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active) {
-        setSession(session || null);
-        setReady(true);
+    ;(async () => {
+      const s = await getSession().catch(() => null)
+      if (!alive) return
+      setSession(s)
+      lastTokenRef.current = s?.access_token ?? null
+    })()
+
+    const sub = onAuthStateChange((event, next) => {
+      if (!alive) return
+
+      // Solo reaccionar a cambios de sesión reales
+      if (event === 'SIGNED_IN') {
+        const token = next?.access_token ?? null
+        if (token && token !== lastTokenRef.current) {
+          lastTokenRef.current = token
+          setSession(next)
+        }
+        return
       }
-    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
-      if (active) setSession(sess || null);
-    });
+      if (event === 'SIGNED_OUT') {
+        lastTokenRef.current = null
+        setSession(null)
+        return
+      }
+
+      // Ignorar TOKEN_REFRESHED / USER_UPDATED para no perder foco
+      return
+    })
 
     return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+      alive = false
+      sub?.data?.subscription?.unsubscribe?.()
+    }
+  }, [])
 
-  return (
-    <AuthContext.Provider value={{ user: session?.user || null, session, ready }}>
-      {ready ? children : null}
-    </AuthContext.Provider>
-  );
+  const value = useMemo(() => ({
+    session,
+    user: session?.user ?? null,
+  }), [session])
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const v = useContext(AuthContext)
+  if (!v) throw new Error('useAuth debe usarse dentro de <AuthProvider>')
+  return v
 }

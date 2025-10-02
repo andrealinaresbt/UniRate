@@ -1,32 +1,30 @@
-// screens/LoginScreen.jsx
+// screens/RegisterScreen.jsx
 import React, { useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
-import { login } from '../services/AuthService'
+import { register } from '../services/AuthService'
 import { isUnimetEmail } from '../utils/email'
 
-export default function LoginScreen({ navigation }) {
+export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
-  async function onLogin() {
+  async function onRegister() {
     const e = email.trim()
     if (!e || !password) return Alert.alert('Faltan datos', 'Ingresa email y contraseña.')
     if (!isUnimetEmail(e)) return Alert.alert('Email inválido', 'Usa tu correo @unimet.edu.ve o @correo.unimet.edu.ve.')
-
     try {
       setBusy(true)
-      const session = await login(e, password)
-      if (!session?.user?.id) throw new Error('Sesión inválida')
-
-      // Navega al Home y limpia la pila
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
+      const { user } = await register(e, password)
+      if (!user) throw new Error('No se pudo crear el usuario.')
+      Alert.alert('Registro exitoso', 'Revisa tu correo para confirmar tu cuenta.')
+      navigation.goBack()
     } catch (err) {
-      Alert.alert('Error', err.message || 'No se pudo iniciar sesión.')
+      Alert.alert('Error', err.message || 'No se pudo registrar.')
     } finally {
       setBusy(false)
     }
@@ -38,7 +36,7 @@ export default function LoginScreen({ navigation }) {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
     >
       <View style={s.c}>
-        <Text style={s.title}>Iniciar sesión</Text>
+        <Text style={s.title}>Crear cuenta</Text>
 
         <TextInput
           style={s.input}
@@ -58,24 +56,20 @@ export default function LoginScreen({ navigation }) {
             secureTextEntry={!showPass}
             value={password}
             onChangeText={setPassword}
-            onSubmitEditing={onLogin}
             returnKeyType="done"
+            onSubmitEditing={onRegister}
           />
           <TouchableOpacity style={s.toggle} onPress={() => setShowPass(v => !v)}>
             <Text style={s.toggleTxt}>{showPass ? 'Ocultar' : 'Ver'}</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={[s.btn, busy && s.btnDis]} onPress={onLogin} disabled={busy}>
-          {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Entrar</Text>}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('RegisterScreen')}>
-          <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
+        <TouchableOpacity style={[s.btn, busy && s.btnDis]} onPress={onRegister} disabled={busy}>
+          {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Registrarse</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.back}>Volver</Text>
+          <Text style={s.back}>Volver al login</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -84,13 +78,7 @@ export default function LoginScreen({ navigation }) {
 
 const s = StyleSheet.create({
   c: { flex: 1, padding: 24, justifyContent: 'center', gap: 12, backgroundColor: '#F6F7F8' },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#003087'
-  },
+  title: { fontSize: 26, fontWeight: '700', textAlign: 'center', marginBottom: 20, color: '#003087' },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1, borderColor: '#CFE1FB',
@@ -108,7 +96,5 @@ const s = StyleSheet.create({
   },
   btnDis: { opacity: 0.6 },
   btnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  link: { textAlign: 'center', color: '#0D2C54', marginTop: 6, fontWeight: '600' },
-  back: { textAlign: 'center', color: '#2B529A', marginTop: 6, fontWeight: '600' },
+  back: { textAlign: 'center', color: '#2B529A', marginTop: 12, fontWeight: '600' },
 })
-
