@@ -4,7 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
-import { login } from '../services/AuthService'
+import { login, resetPassword } from '../services/AuthService'
 import { isUnimetEmail } from '../utils/email'
 
 export default function LoginScreen({ navigation }) {
@@ -30,6 +30,20 @@ export default function LoginScreen({ navigation }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  function onForgotPassword() {
+    if (!email.trim()) {
+      Alert.alert('Recuperar contraseña', 'Por favor ingresa tu correo en el campo de email.');
+      return;
+    }
+    resetPassword(email.trim())
+      .then(() => {
+        Alert.alert('Recuperar contraseña', 'Si el correo existe, recibirás instrucciones para restablecer tu contraseña.');
+      })
+      .catch(err => {
+        Alert.alert('Error', err.message || 'No se pudo enviar el correo de recuperación.');
+      });
   }
 
   return (
@@ -74,8 +88,8 @@ export default function LoginScreen({ navigation }) {
           <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={s.back}>Volver</Text>
+        <TouchableOpacity onPress={onForgotPassword}>
+          <Text style={s.link}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

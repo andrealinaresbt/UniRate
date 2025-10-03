@@ -47,3 +47,9 @@ export async function fetchIsAdmin(userId) {
 export function onAuthStateChange(cb) {
   return supabase.auth.onAuthStateChange((event, session) => cb(event, session ?? null))
 }
+
+export async function resetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+  if (error) throw new Error(error.message || 'No se pudo enviar el correo de recuperación.')
+  return true
+}
