@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/DarkHeader';
@@ -25,7 +26,6 @@ export default function HomeScreen({ navigation }) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // ✅ Usando tu custom hook para búsqueda
   const {
     searchTerm,
     setSearchTerm,
@@ -35,7 +35,6 @@ export default function HomeScreen({ navigation }) {
     clearSearch
   } = useSearch();
 
-  // ✅ Lógica de admin de tu compañero
   useEffect(() => {
     let alive = true;
     if (user?.id) {
@@ -50,12 +49,9 @@ export default function HomeScreen({ navigation }) {
 
   const handleResultPress = (item) => {
     if (item.type === 'professor') {
-      // ✅ Usando el approach temporal de tu compañero
       Alert.alert('Profesor', `${item.full_name}\n(la vista de perfil aún no está lista)`);
-      // Cuando esté lista: navigation.navigate('Professor', { professorId: item.id });
     } else if (item.type === 'course') {
       Alert.alert('Materia', `${item.name}\n(la vista de materia aún no está lista)`);
-      // Cuando esté lista: navigation.navigate('Course', { courseId: item.id });
     }
   };
 
@@ -67,37 +63,66 @@ export default function HomeScreen({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Status bar azul - de tu diseño */}
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <StatusBar barStyle="light-content" backgroundColor="#0D2C54" />
       
-      {/* SafeAreaView con fondo azul - de tu diseño */}
       <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
         <View style={styles.topSafeAreaContent}>
-          {/* Header azul - de tu diseño */}
           <Header onMenuPress={() => setMenuVisible(true)} />
         </View>
       </SafeAreaView>
       
-      {/* ✅ MenuModal actualizado con todas las opciones del compañero */}
       <MenuModal 
         visible={menuVisible} 
         onClose={() => setMenuVisible(false)} 
         navigation={navigation}
         user={user}
-        isAdmin={isAdmin} // ✅ Pasamos el estado de admin
+        isAdmin={isAdmin}
       />
 
-      {/* SafeAreaView para el contenido principal - de tu diseño */}
       <SafeAreaView style={styles.safeAreaContent} edges={['left', 'right', 'bottom']}>
-        {/* ✅ Contenido corregido sin VirtualizedLists nested */}
+        
+        {/*SECCIÓN SUPERIOR CON BÚSQUEDA  */}
+        <View style={styles.topSection}>
+          <Text style={styles.heroTitle}>Encuentra tu Profesor</Text>
+          <Text style={styles.heroSubtitle}>Califica profesores y materias</Text>
+          
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder='Ej. "Juan Pérez", "Cálculo I", "BPTMI02"'
+              placeholderTextColor="#888"
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              returnKeyType="search"
+            />
+            {searchTerm.length > 0 && (
+              <TouchableOpacity 
+                style={styles.clearButton} 
+                onPress={clearSearch}
+              >
+                <Text style={styles.clearButtonText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Simbolo loading */}
+        {loading && (
+          <View style={styles.fixedLoadingContainer}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <Text style={styles.loadingText}>Buscando...</Text>
+          </View>
+        )}
+
+        {/* CONTENIDO DINÁMICO - RESULTADOS O BIENVENIDA */}
         {showResults ? (
           <View style={styles.resultsContainer}>
             {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#2563EB" />
-                <Text style={styles.loadingText}>Buscando...</Text>
-              </View>
+              <View style={styles.loadingPlaceholder} />
             ) : results.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No se encontraron resultados</Text>
@@ -110,71 +135,44 @@ export default function HomeScreen({ navigation }) {
                 keyExtractor={(item) => `${item.type}-${item.id}`}
                 style={styles.resultsList}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.resultsContent}
               />
             )}
           </View>
         ) : (
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {/* Sección superior con color - de tu diseño */}
-            <View style={styles.topSection}>
-              <Text style={styles.heroTitle}>Encuentra tu Profesor</Text>
-              <Text style={styles.heroSubtitle}>Califica profesores y materias</Text>
+          <ScrollView 
+            style={styles.welcomeScrollView} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.welcomeContent}
+          >
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeTitle}>¡Bienvenido a UNIRATE!</Text>
+              <Text style={styles.welcomeText}>
+                {user ? ` ${user.email}` : 'Escribe en la barra de búsqueda para encontrar profesores o materias'}
+              </Text>
               
-              {/* Barra de búsqueda integrada - de tu diseño */}
-              <View style={styles.searchContainer}>
-                <TextInput
-                  style={styles.searchBar}
-                  placeholder='Ej. "Juan Pérez", "Cálculo I", "BPTMI02"'
-                  placeholderTextColor="#888"
-                  value={searchTerm}
-                  onChangeText={setSearchTerm}
-                  returnKeyType="search"
-                />
-                {/* Botón para limpiar búsqueda */}
-                {searchTerm.length > 0 && (
-                  <TouchableOpacity 
-                    style={styles.clearButton} 
-                    onPress={clearSearch}
-                  >
-                    <Text style={styles.clearButtonText}>✕</Text>
+              <View style={styles.examplesContainer}>
+                <Text style={styles.examplesTitle}>Ejemplos de búsqueda:</Text>
+                <View style={styles.exampleTags}>
+                  <TouchableOpacity onPress={() => setSearchTerm('María González')}>
+                    <Text style={styles.exampleTag}>"Carla López"</Text>
                   </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Sección inferior blanca - de tu diseño */}
-            <View style={styles.bottomSection}>
-              <View style={styles.welcomeContainer}>
-                <Text style={styles.welcomeTitle}>¡Bienvenido a UNIRATE!</Text>
-                <Text style={styles.welcomeText}>
-                  {user ? `Hola, ${user.email}` : 'Escribe en la barra de búsqueda para encontrar profesores o materias'}
-                </Text>
-                
-                {/* Ejemplos de búsqueda */}
-                <View style={styles.examplesContainer}>
-                  <Text style={styles.examplesTitle}>Ejemplos:</Text>
-                  <View style={styles.exampleTags}>
-                    <TouchableOpacity onPress={() => setSearchTerm('María González')}>
-                      <Text style={styles.exampleTag}>"Carla López"</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSearchTerm('Física I')}>
-                      <Text style={styles.exampleTag}>"Física I"</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setSearchTerm('BPTMI02')}>
-                      <Text style={styles.exampleTag}>"BPTMI02"</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity onPress={() => setSearchTerm('Física I')}>
+                    <Text style={styles.exampleTag}>"Física I"</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setSearchTerm('BPTMI02')}>
+                    <Text style={styles.exampleTag}>"BPTMI02"</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
           </ScrollView>
         )}
       </SafeAreaView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// 🎨 Estilos combinados (principalmente de tu diseño con mejoras)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -190,14 +188,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  scrollView: {
-    flex: 1,
-  },
+  
+  // Sección superior
   topSection: {
     backgroundColor: '#0D2C54',
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 40,
+    paddingBottom: 25,
   },
   heroTitle: {
     fontSize: 32,
@@ -210,7 +207,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 25,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -254,51 +251,50 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: 'bold',
   },
-  bottomSection: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 30,
-    paddingBottom: 40,
+  
+    fixedLoadingContainer: {
+    position: 'absolute',
+    top: 250, 
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000, 
   },
+  loadingText: {
+    marginTop: 8,
+    color: '#2563EB',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
   resultsContainer: {
     flex: 1,
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  loadingPlaceholder: {
+    height: 100,
   },
   resultsList: {
     flex: 1,
   },
-  loadingContainer: {
-    padding: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+  resultsContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 20,
   },
-  loadingText: {
-    marginTop: 12,
-    color: '#666',
-    fontSize: 16,
+  
+  welcomeScrollView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  emptyContainer: {
-    padding: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
+  welcomeContent: {
+    flexGrow: 1,
   },
-  emptyText: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-  },
+  
   welcomeContainer: {
     alignItems: 'center',
     paddingVertical: 40,
+    paddingHorizontal: 20,
   },
   welcomeTitle: {
     fontSize: 24,
@@ -316,7 +312,6 @@ const styles = StyleSheet.create({
   },
   examplesContainer: {
     alignItems: 'center',
-    padding: 1,
     marginTop: 0,
   },
   examplesTitle: {
@@ -339,5 +334,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2563EB',
     fontWeight: '500',
+  },
+  
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
   },
 });

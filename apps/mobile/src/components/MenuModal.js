@@ -1,27 +1,24 @@
+// components/MenuModal.js - ACTUALIZA con esto:
 import React from 'react';
-import { 
-  Modal, 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Platform, 
-  Alert 
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Pressable,
+  Alert
 } from 'react-native';
-import { useAuth } from '../services/AuthContext';
 import { signOut } from '../services/AuthService';
 
-// Componente interno para items del menú
 const MenuItem = ({ text, onPress }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
     <Text style={styles.menuItemText}>{text}</Text>
   </TouchableOpacity>
 );
 
-export const MenuModal = ({ visible, onClose, navigation }) => {
-  const { user } = useAuth();
-
-  const handleSignOut = async () => {
+export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
+  const handleLogout = async () => {
     try {
       await signOut();
       onClose();
@@ -32,87 +29,89 @@ export const MenuModal = ({ visible, onClose, navigation }) => {
 
   return (
     <Modal
-      animationType="slide"
-      transparent={true}
+      animationType="fade"
+      transparent
       visible={visible}
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
-        style={styles.modalOverlay} 
-        activeOpacity={1} 
-        onPressOut={onClose}
-      >
-        <View style={styles.menuContainer}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={styles.menuContainer}>
           <Text style={styles.menuTitle}>Opciones</Text>
 
           {!user ? (
             <>
-              <MenuItem 
-                text="Iniciar sesión" 
-                onPress={() => { 
-                  onClose(); 
-                  navigation.navigate('Login'); 
-                }} 
+              <MenuItem
+                text="Iniciar sesión"
+                onPress={() => { onClose(); navigation.navigate('Login'); }}
               />
-              <MenuItem 
-                text="Configuración" 
-                onPress={onClose} 
-              />
+              <MenuItem text="Configuración" onPress={onClose} />
             </>
           ) : (
             <>
-              <MenuItem 
-                text="Mi Perfil" 
-                onPress={() => { 
-                  onClose(); 
-                  // navigation.navigate('Profile') 
-                }} 
+              <MenuItem text="Mi Perfil" onPress={onClose} />
+              <MenuItem text="Ver Materias" onPress={onClose} />
+
+              {/* ✅ NUEVO: Publicar Reseña */}
+              <MenuItem
+                text="Publicar Reseña"
+                onPress={() => {
+                  onClose();
+                  navigation.navigate('NuevaResena');
+                }}
               />
-              <MenuItem 
-                text="Ver Materias" 
-                onPress={onClose} 
-              />
-              <MenuItem 
-                text="Configuración" 
-                onPress={onClose} 
-              />
-              <MenuItem 
-                text="Cerrar Sesión" 
-                onPress={handleSignOut} 
+
+              <MenuItem text="Configuración" onPress={onClose} />
+
+              {isAdmin && (
+                <>
+                  <View style={{ height: 12 }} />
+                  <Text style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>Admin</Text>
+                  <MenuItem
+                    text="Panel admin"
+                    onPress={() => { onClose(); navigation.navigate('Admin'); }}
+                  />
+                  <MenuItem
+                    text="Gestión de profesores"
+                    onPress={() => { onClose(); navigation.navigate('AdminProfessors'); }}
+                  />
+                </>
+              )}
+
+              <MenuItem
+                text="Cerrar Sesión"
+                onPress={handleLogout}
               />
             </>
           )}
-        </View>
-      </TouchableOpacity>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)' 
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
   },
   menuContainer: {
+    width: '78%',
     height: '100%',
-    width: '80%',
     backgroundColor: '#FFFFFF',
     paddingTop: 60,
     paddingHorizontal: 20,
-    ...Platform.select({
-      ios: { 
-        shadowColor: '#000', 
-        shadowOffset: { width: 2, height: 0 }, 
-        shadowOpacity: 0.25, 
-        shadowRadius: 10 
-      },
-      android: { elevation: 10 },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
   menuTitle: { 
     fontSize: 24, 
     fontWeight: 'bold', 
-    color: '#0D2C54', 
+    color: '#003087', 
     marginBottom: 30 
   },
   menuItem: { 
