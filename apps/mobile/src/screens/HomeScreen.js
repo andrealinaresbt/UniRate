@@ -20,6 +20,7 @@ import SearchResultItem from '../components/SearchResultItem';
 import { useSearch } from '../hooks/useSearch';
 import { useAuth } from '../services/AuthContext';
 import { fetchIsAdmin } from '../services/AuthService';
+import { ErrorPopup } from '../components/NetErrorPopup';
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
@@ -32,6 +33,8 @@ export default function HomeScreen({ navigation }) {
     results,
     loading,
     showResults,
+    error,
+    retrySearch,
     clearSearch
   } = useSearch();
 
@@ -67,6 +70,16 @@ export default function HomeScreen({ navigation }) {
       onPress={() => handleResultPress(item)} 
     />
   );
+
+    // Estado local para controlar el popup
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+
+  // Efecto para mostrar popup cuando hay error
+  useEffect(() => {
+    if (error) {
+      setShowErrorPopup(true);
+    }
+  }, [error]);
 
   return (
     <KeyboardAvoidingView 
@@ -175,6 +188,15 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
         )}
       </SafeAreaView>
+      <ErrorPopup
+      visible={showErrorPopup}
+      error={error}
+      onRetry={() => {
+        setShowErrorPopup(false);
+        retrySearch();
+      }}
+      onClose={() => setShowErrorPopup(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
