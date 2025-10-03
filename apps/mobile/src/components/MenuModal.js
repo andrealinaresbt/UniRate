@@ -1,4 +1,4 @@
-// components/MenuModal.js - ACTUALIZA con esto:
+// components/MenuModal.js 
 import React from 'react';
 import {
   Modal,
@@ -36,7 +36,7 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.menuContainer}>
-          <Text style={styles.menuTitle}>Opciones</Text>
+          <Text style={styles.menuTitle}>UniRate</Text>
 
           {!user ? (
             <>
@@ -51,7 +51,7 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
               <MenuItem text="Mi Perfil" onPress={onClose} />
               <MenuItem text="Ver Materias" onPress={onClose} />
 
-              {/* ✅ NUEVO: Publicar Reseña */}
+              
               <MenuItem
                 text="Publicar Reseña"
                 onPress={() => {

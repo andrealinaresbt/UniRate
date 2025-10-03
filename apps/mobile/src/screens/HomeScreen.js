@@ -49,9 +49,15 @@ export default function HomeScreen({ navigation }) {
 
   const handleResultPress = (item) => {
     if (item.type === 'professor') {
-      Alert.alert('Profesor', `${item.full_name}\n(la vista de perfil aún no está lista)`);
+    navigation.navigate('ProfessorProfile', { 
+      professorId: item.id,
+      professorName: item.full_name 
+    });
     } else if (item.type === 'course') {
-      Alert.alert('Materia', `${item.name}\n(la vista de materia aún no está lista)`);
+      navigation.navigate('CourseProfile', { 
+      courseId: item.id,
+      courseName: item.name 
+      });
     }
   };
 

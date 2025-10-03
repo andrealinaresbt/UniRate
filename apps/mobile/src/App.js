@@ -5,8 +5,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
-import RegisterScreen from './screens/RegisterScreen'; // Agrega esta línea
+import RegisterScreen from './screens/RegisterScreen'; 
 import { AuthProvider } from './services/AuthContext';
+import ProfessorProfile from './screens/ProfessorProfile';
+import CourseProfile from './screens/CourseProfile';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,6 +43,19 @@ export default function App() {
             name="NuevaResena"
             component={NuevaResenaScreen}
             options={{ title: 'Publicar Reseña' }}
+          />
+          {/* Professor Profile */}
+          <Stack.Screen
+            name="ProfessorProfile"
+            component={ProfessorProfile}
+            options={{ headerShown: false }}
+          />
+
+          {/* Course Profile */}
+          <Stack.Screen
+            name="CourseProfile"
+            component={CourseProfile}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>
