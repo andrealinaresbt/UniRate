@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
+import RegisterScreen from './screens/RegisterScreen'; // Agrega esta línea
 import { AuthProvider } from './services/AuthContext';
 
 const Stack = createNativeStackNavigator();
@@ -21,14 +22,21 @@ export default function App() {
             options={{ headerShown: false }}
           />
 
-          {/* Login (de develop) */}
+          {/* Login */}
           <Stack.Screen
             name="Login"
             component={LoginScreen}
             options={{ headerShown: false }}
           />
 
-          {/* Nueva Reseña (HU5) */}
+          {/* Register */}
+          <Stack.Screen
+            name="RegisterScreen"
+            component={RegisterScreen}
+            options={{ title: 'Registro', headerShown: false }}
+          />
+
+          {/* Nueva Reseña */}
           <Stack.Screen
             name="NuevaResena"
             component={NuevaResenaScreen}
