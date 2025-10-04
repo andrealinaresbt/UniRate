@@ -36,6 +36,7 @@ export function useCourseDetails(courseId) {
           id,
           course_id,
           professor_id,
+          score_teacher,
           score,
           difficulty,
           comment,
@@ -49,7 +50,7 @@ export function useCourseDetails(courseId) {
       // 3) Calcular promedios generales
       if (reviewsData && reviewsData.length > 0) {
         const total = reviewsData.length;
-        const sumScore = reviewsData.reduce((acc, r) => acc + (r.score || 0), 0);
+        const sumScore = reviewsData.reduce((acc, r) => acc + (r.score || 0), 0); // score para materia
         const sumDifficulty = reviewsData.reduce((acc, r) => acc + (r.difficulty || 0), 0);
 
         setAvgSatisfaccion((sumScore / total).toFixed(2));
@@ -62,7 +63,7 @@ export function useCourseDetails(courseId) {
           if (!mapProf[profId]) {
             mapProf[profId] = { professor_id: r.professor_id, reviewsSum: 0, reviewsCount: 0 };
           }
-          mapProf[profId].reviewsSum += r.score || 0;
+          mapProf[profId].reviewsSum += r.score_teacher || 0;
           mapProf[profId].reviewsCount += 1;
         });
 

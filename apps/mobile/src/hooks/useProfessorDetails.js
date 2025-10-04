@@ -67,7 +67,7 @@ export function useProfessorDetails(professorId) {
       // 4) Calcular promedios y porcentaje "volverían a tomar"
       if (reviewsWithCourse.length > 0) {
         const total = reviewsWithCourse.length;
-        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (r.score || 0), 0);
+        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (r.score_teacher || 0), 0);
         const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (r.difficulty || 0), 0);
         const takeAgainCount = reviewsWithCourse.reduce(
           (acc, r) => acc + (r.take_again ? 1 : 0),

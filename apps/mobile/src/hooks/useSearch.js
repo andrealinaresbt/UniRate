@@ -30,20 +30,31 @@ export function useSearch() {
       // Fetch professors
       const { data: profs, error: profError } = await supabase
         .from('professors')
-        .select('*, reviews(id)') // Traer también las reseñas
+        .select('*, reviews(score_teacher, professor_id)') // Traer también score_teacher y professor_id
         .ilike('full_name', `%${term}%`);
 
       if (profError) throw profError;
 
-      const professorsFormatted = (profs || []).map((p) => ({
-        ...p,
-        type: 'professor',
-        review_count: p.reviews ? p.reviews.length : 0,
-        avg_score:
-          p.reviews && p.reviews.length > 0
-            ? (p.reviews.reduce((sum, r) => sum + (r.score || 0), 0) / p.reviews.length).toFixed(2)
-            : null,
-      }));
+      // Para cada profesor, consulta reviews filtrando por su id
+      const professorsFormatted = await Promise.all(
+        (profs || []).map(async (p) => {
+          const { data: profReviews, error: profReviewsError } = await supabase
+            .from('reviews')
+            .select('score_teacher')
+            .eq('professor_id', p.id);
+          const review_count = profReviews?.length || 0;
+          const avg_score =
+            review_count > 0
+              ? (profReviews.reduce((sum, r) => sum + (r.score_teacher || 0), 0) / review_count).toFixed(2)
+              : null;
+          return {
+            ...p,
+            type: 'professor',
+            review_count,
+            avg_score,
+          };
+        })
+      );
 
       // Fetch courses
       const { data: courses, error: courseError } = await supabase
