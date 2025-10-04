@@ -12,6 +12,8 @@ import CourseProfile from './screens/CourseProfile';
 
 import AdminScreen from './screens/AdminScreen';
 import CreateProfessorScreen from './screens/CreateProfessorScreen';
+import CreateCourseScreen from './screens/CreateCourseScreen';
+import ManageLinksScreen from './screens/ManageLinksScreen';
 
 import { AuthProvider } from './services/AuthContext';
 
@@ -29,61 +31,27 @@ export default function App() {
           }}
         >
           {/* Home */}
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{ title: 'UniRate' }}
-          />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'UniRate' }} />
 
-          {/* Login (setup de develop) */}
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
+          {/* Login / Registro (mantengo alias por compatibilidad) */}
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ title: 'Registro', headerShown: false }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro', headerShown: false }} />
 
-          {/* Registro (develop usa RegisterScreen). Dejamos alias "Register" por compatibilidad. */}
-          <Stack.Screen
-            name="RegisterScreen"
-            component={RegisterScreen}
-            options={{ title: 'Registro', headerShown: false }}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ title: 'Registro', headerShown: false }}
-          />
+          {/* Reseñas */}
+          <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Publicar Reseña' }} />
 
-          {/* Nueva Reseña (texto de develop) */}
-          <Stack.Screen
-            name="NuevaResena"
-            component={NuevaResenaScreen}
-            options={{ title: 'Publicar Reseña' }}
-          />
+          {/* Perfiles */}
+          <Stack.Screen name="ProfessorProfile" component={ProfessorProfile} options={{ headerShown: false }} />
+          <Stack.Screen name="CourseProfile" component={CourseProfile} options={{ headerShown: false }} />
 
-          {/* Perfiles (develop) */}
-          <Stack.Screen
-            name="ProfessorProfile"
-            component={ProfessorProfile}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="CourseProfile"
-            component={CourseProfile}
-            options={{ headerShown: false }}
-          />
+          {/* Admin + creación */}
+          <Stack.Screen name="Admin" component={AdminScreen} options={{ title: 'Panel Admin' }} />
+          <Stack.Screen name="CreateProfessor" component={CreateProfessorScreen} options={{ title: 'Crear Profesor' }} />
+          <Stack.Screen name="CreateCourse" component={CreateCourseScreen} options={{ title: 'Crear Materia' }} />
 
-          {/* Admin agregado en esta feature */}
-          <Stack.Screen
-            name="Admin"
-            component={AdminScreen}
-            options={{ title: 'Panel Admin' }}
-          />
-          <Stack.Screen
-            name="CreateProfessor"
-            component={CreateProfessorScreen}
-            options={{ title: 'Crear Profesor' }}
-          />
+          {/* Vinculaciones */}
+          <Stack.Screen name="ManageLinks" component={ManageLinksScreen} options={{ title: 'Vincular Materias ↔ Profesores' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>
