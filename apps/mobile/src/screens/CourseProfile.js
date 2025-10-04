@@ -154,15 +154,15 @@ export default function CourseScreen() {
             renderItem={({ item }) => (
               <View style={styles.reviewCard}>
                 <Text style={styles.reviewProfessor}>
-                  {item.profesor_nombre || 'Profesor desconocido'}
+                  {item.professor_id ? professorsAggregated.find(p => p.professor_id === item.professor_id)?.nombre || 'Profesor desconocido' : 'Profesor desconocido'}
                 </Text>
                 <Text style={styles.reviewDate}>
                   {new Date(item.created_at).toLocaleDateString('es-ES')}
                 </Text>
-                <Text>Satisfacción: {item.satisfaction}</Text>
-                <Text>Dificultad: {item.dificulty}</Text>
+                <Text>Satisfacción: {item.score}</Text>
+                <Text>Dificultad: {item.difficulty}</Text>
                 <Text style={styles.reviewComment}>
-                  {item.reviewComment || 'Sin comentario'}
+                  {item.comment || 'Sin comentario'}
                 </Text>
               </View>
             )}

@@ -1,94 +1,88 @@
-import { useState, useEffect, useRef } from 'react';
-import { SearchService } from '../services/SearchService';
+import { useState, useEffect } from 'react';
+import { supabase } from '../services/supabaseClient';
 
-export const useSearch = () => {
+export function useSearch() {
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [showResults, setShowResults] = useState(false);
-  const [error, setError] = useState(null); // ← NUEVO: estado de error
-  const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (!searchTerm.trim()) {
-      setShowResults(false);
+    if (!searchTerm) {
       setResults([]);
-      setError(null); // ← Limpiar error al borrar búsqueda
+      setShowResults(false);
       return;
     }
 
-    setLoading(true);
-    setShowResults(true);
-    setError(null); // ← Limpiar error antes de nueva búsqueda
+    const timer = setTimeout(() => {
+      fetchResults(searchTerm);
+    }, 300);
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        const result = await SearchService.unifiedSearch(searchTerm);
-        
-        if (result.success) {
-          setResults(result.data);
-        } else {
-          // Si hay error en el servicio, lo mostramos
-          setError(result.error || 'Error en la búsqueda');
-          setResults([]);
-        }
-      } catch (error) {
-        // Error de red o excepción no manejada
-        console.error('Error en búsqueda:', error);
-        if (error.message?.includes('Network') || error.message?.includes('fetch')) {
-          setError('Error de conexión. Verifica tu internet e intenta nuevamente.');
-        } else if (error.message?.includes('JWT') || error.message?.includes('auth')) {
-          setError('Error de autenticación. Por favor, reinicia la sesión.');
-        } else {
-          setError('Error inesperado. Por favor, intenta nuevamente.');
-        }
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // ← NUEVA FUNCIÓN: Reintentar búsqueda
-  const retrySearch = async () => {
-    if (!searchTerm.trim()) return;
-    
+  const fetchResults = async (term) => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const result = await SearchService.unifiedSearch(searchTerm);
-      
-      if (result.success) {
-        setResults(result.data);
-      } else {
-        setError(result.error || 'Error en la búsqueda');
-        setResults([]);
-      }
-    } catch (error) {
-      setError('Error de conexión. Verifica tu internet e intenta nuevamente.');
-      setResults([]);
+      // Fetch professors
+      const { data: profs, error: profError } = await supabase
+        .from('professors')
+        .select('*, reviews(id)') // Traer también las reseñas
+        .ilike('full_name', `%${term}%`);
+
+      if (profError) throw profError;
+
+      const professorsFormatted = (profs || []).map((p) => ({
+        ...p,
+        type: 'professor',
+        review_count: p.reviews ? p.reviews.length : 0,
+        avg_score:
+          p.reviews && p.reviews.length > 0
+            ? (p.reviews.reduce((sum, r) => sum + (r.score || 0), 0) / p.reviews.length).toFixed(2)
+            : null,
+      }));
+
+      // Fetch courses
+      const { data: courses, error: courseError } = await supabase
+        .from('courses')
+        .select('*')
+        .ilike('name', `%${term}%`);
+
+      if (courseError) throw courseError;
+
+      // Add avg_score to courses
+      const coursesWithAvg = await Promise.all(
+        (courses || []).map(async (c) => {
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select('score')
+            .eq('course_id', c.id);
+
+          const total = reviews?.length || 0;
+          const avg_score =
+            total > 0
+              ? (reviews.reduce((sum, r) => sum + (r.score || 0), 0) / total).toFixed(2)
+              : null;
+
+          return { ...c, type: 'course', avg_score, review_count: total };
+        })
+      );
+
+      setResults([...professorsFormatted, ...coursesWithAvg]);
+      setShowResults(true);
+    } catch (err) {
+      console.log(err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowResults(false);
-    setResults([]);
-    setError(null); // ← Limpiar error también
-  };
+  const retrySearch = () => fetchResults(searchTerm);
+  const clearSearch = () => setSearchTerm('');
 
   return {
     searchTerm,
@@ -96,8 +90,8 @@ export const useSearch = () => {
     results,
     loading,
     showResults,
-    error, // ← Exportar error
-    retrySearch, // ← Exportar función de reintento
-    clearSearch
+    error,
+    retrySearch,
+    clearSearch,
   };
-};
+}

@@ -26,11 +26,10 @@ export function useCourseDetails(courseId) {
         .select('*')
         .eq('id', courseId)
         .single();
-
       if (courseError) throw courseError;
       setCourse(courseData);
 
-      // 2) Obtener reseñas (con professor_id)
+      // 2) Obtener reseñas
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
         .select(`
@@ -40,38 +39,28 @@ export function useCourseDetails(courseId) {
           score,
           difficulty,
           comment,
+          professor_tags,
           created_at
         `)
         .eq('course_id', courseId);
-
       if (reviewsError) throw reviewsError;
       setReviews(reviewsData || []);
 
-      // 3) Calcular promedios
+      // 3) Calcular promedios generales
       if (reviewsData && reviewsData.length > 0) {
         const total = reviewsData.length;
-        const sumSatisfaccion = reviewsData.reduce(
-          (acc, r) => acc + (r.score || 0),
-          0
-        );
-        const sumDificultad = reviewsData.reduce(
-          (acc, r) => acc + (r.difficulty || 0),
-          0
-        );
+        const sumScore = reviewsData.reduce((acc, r) => acc + (r.score || 0), 0);
+        const sumDifficulty = reviewsData.reduce((acc, r) => acc + (r.difficulty || 0), 0);
 
-        setAvgSatisfaccion((sumSatisfaccion / total).toFixed(2));
-        setAvgDificultad((sumDificultad / total).toFixed(2));
+        setAvgSatisfaccion((sumScore / total).toFixed(2));
+        setAvgDificultad((sumDifficulty / total).toFixed(2));
 
-        // 4) Agrupar profesores por professor_id
+        // 4) Agrupar profesores
         const mapProf = {};
         reviewsData.forEach((r) => {
           const profId = r.professor_id || 'desconocido';
           if (!mapProf[profId]) {
-            mapProf[profId] = {
-              professor_id: r.professor_id,
-              reviewsSum: 0,
-              reviewsCount: 0
-            };
+            mapProf[profId] = { professor_id: r.professor_id, reviewsSum: 0, reviewsCount: 0 };
           }
           mapProf[profId].reviewsSum += r.score || 0;
           mapProf[profId].reviewsCount += 1;
@@ -87,13 +76,11 @@ export function useCourseDetails(courseId) {
                 reviewsCount: p.reviewsCount
               };
             }
-
             const { data: profData } = await supabase
               .from('professors')
               .select('full_name')
               .eq('id', p.professor_id)
               .single();
-
             return {
               professor_id: p.professor_id,
               nombre: profData?.full_name || 'Profesor desconocido',
@@ -102,13 +89,13 @@ export function useCourseDetails(courseId) {
             };
           })
         );
-
         setProfessorsAggregated(aggregated);
       } else {
         setAvgSatisfaccion(null);
         setAvgDificultad(null);
         setProfessorsAggregated([]);
       }
+
     } catch (err) {
       console.log(err);
       setError(err.message);

@@ -68,92 +68,115 @@ export default function ProfessorProfile({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
-      {/* Cabecera naranja */}
+    <View style={{ flex: 1 }}>
+      {/* SafeArea azul */}
+      <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
+      <BackHeader onBack={() => navigation.goBack()} />
+      {/* Header azul */}
       <View style={{ backgroundColor: COLORS.resolutionBlue }}>
-        <BackHeader onBack={() => navigation.goBack()} />
         <View style={styles.header}>
           <Text style={styles.name}>{professor.full_name}</Text>
           <Text style={styles.subtitle}>{professor.department}</Text>
         </View>
       </View>
 
-      {/* ScrollView con contenido */}
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        {/* Promedios */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>⭐ Calificación</Text>
-            <Text style={styles.statValue}>{avgRating ?? "N/A"}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>📉 Dificultad</Text>
-            <Text style={styles.statValue}>{avgDifficulty ?? "N/A"}</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>🔁 Volverían</Text>
-            <Text style={styles.statValue}>{wouldTakeAgain ?? "N/A"}%</Text>
-          </View>
-        </View>
-
-        {/*  Top tags 
-        <Text style={styles.sectionTitle}>Etiquetas más frecuentes</Text>
-        <View style={{ flexDirection: "row", marginBottom: 20 }}>
-          {topTags.map((tag, i) => (
-            <View key={i} style={styles.tag}>
-              <Text>{tag}</Text>
+      {/* Contenedor blanco */}
+      <View style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Promedios */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>⭐ Calificación</Text>
+              <Text style={styles.statValue}>{avgRating ?? "N/A"}</Text>
             </View>
-          ))}
-        </View> */}
-      
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>📉 Dificultad</Text>
+              <Text style={styles.statValue}>{avgDifficulty ?? "N/A"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>🔁 Volverían</Text>
+              <Text style={styles.statValue}>{wouldTakeAgain ?? "N/A"}%</Text>
+            </View>
+          </View>
 
-        {/* Materias */}
-        <Text style={styles.sectionTitle}>Materias</Text>
-        <FlatList
-          data={coursesTaught}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 20 }}
-          renderItem={({ item }) => (
-            <SearchResultItem
-              item={{
-                full_name: item.name,
-                avg_score: null,
-                review_count: null,
-                type: "course",
-              }}
-              onPress={() =>
-                setSelectedCourse(selectedCourse === item.id ? null : item.id)
-              }
+          {/* Top tags */}
+          {topTags && topTags.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Etiquetas más frecuentes</Text>
+              <View style={{ flexDirection: "row", marginBottom: 20 }}>
+                {topTags.map((tag, i) => (
+                  <View key={i} style={styles.tag}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Materias */}
+          <Text style={styles.sectionTitle}>Materias</Text>
+          <FlatList
+  data={coursesTaught}
+  keyExtractor={(item) => item.id}
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  style={{ marginBottom: 20 }}
+  renderItem={({ item }) => {
+    // Calculate avg score for this course
+    const courseReviews = reviews.filter(r => r.course_id === item.id);
+    const avgScore =
+      courseReviews.length > 0
+        ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) /
+           courseReviews.length
+          ).toFixed(2)
+        : null;
+
+    return (
+      <SearchResultItem
+        item={{
+          full_name: item.name,
+          avg_score: avgScore,
+          review_count: courseReviews.length,
+          type: 'course',
+          code: item.code,
+        }}
+        onPress={() =>
+          setSelectedCourse(selectedCourse === item.id ? null : item.id)
+        }
+      />
+    );
+  }}
+/>
+
+
+          {/* Reseñas */}
+          <Text style={styles.sectionTitle}>Reseñas</Text>
+          {filteredReviews.length === 0 ? (
+            <Text>No hay reseñas todavía.</Text>
+          ) : (
+            <FlatList
+              data={filteredReviews}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                <View style={styles.reviewCard}>
+                  <Text style={styles.reviewCourse}>
+                    {item.course_name || "Materia desconocida"}
+                  </Text>
+                  <Text style={styles.reviewDate}>
+                    {new Date(item.created_at).toLocaleDateString("es-ES")}
+                  </Text>
+                  <Text>{item.comment || "Sin comentario"}</Text>
+                </View>
+              )}
             />
           )}
-        />
-
-        {/* Reseñas */}
-        <Text style={styles.sectionTitle}>Reseñas</Text>
-        {filteredReviews.length === 0 ? (
-          <Text>No hay reseñas todavía.</Text>
-        ) : (
-          <FlatList
-            data={filteredReviews}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <View style={styles.reviewCard}>
-                <Text style={styles.reviewCourse}>
-                  {item.course_name || "Materia desconocida"}
-                </Text>
-                <Text style={styles.reviewDate}>
-                  {new Date(item.created_at).toLocaleDateString("es-ES")}
-                </Text>
-                <Text>{item.comment || "Sin comentario"}</Text>
-              </View>
-            )}
-          />
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
@@ -197,7 +220,7 @@ const styles = StyleSheet.create({
     color: COLORS.yinmnBlue,
   },
   tag: {
-    backgroundColor: COLORS.columbiaBlue,
+    backgroundColor: COLORS.utOrange,
     padding: 8,
     borderRadius: 12,
     marginRight: 8,
@@ -208,6 +231,11 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 12,
   },
+  tagText: {
+    color: "#FFF", // white color
+    fontWeight: "bold", // bold text
+  },
+
   reviewCourse: {
     fontWeight: "600",
     fontSize: 15,

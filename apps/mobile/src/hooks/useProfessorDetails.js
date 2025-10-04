@@ -22,7 +22,7 @@ export function useProfessorDetails(professorId) {
     setError(null);
 
     try {
-      // 1️⃣ Datos del profesor
+      // 1) Obtener datos del profesor
       const { data: profData, error: profError } = await supabase
         .from('professors')
         .select('*')
@@ -31,58 +31,89 @@ export function useProfessorDetails(professorId) {
       if (profError) throw profError;
       setProfessor(profData);
 
-      // 2️⃣ Reseñas del profesor
+      // 2) Obtener reviews del profesor
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
-        .select(`
-          id,
-          course_id,
-          professor_id,
-          score,
-          difficulty,
-          would_take_again,
-          comment,
-          created_at
-        `)
+        .select('*')
         .eq('professor_id', professorId);
       if (reviewsError) throw reviewsError;
-      setReviews(reviewsData || []);
 
-      // 3️⃣ Promedios y porcentaje would_take_again
-      if (reviewsData && reviewsData.length > 0) {
-        const total = reviewsData.length;
-        const sumScore = reviewsData.reduce((acc, r) => acc + (r.score || 0), 0);
-        const sumDifficulty = reviewsData.reduce((acc, r) => acc + (r.difficulty || 0), 0);
-        const sumWouldTakeAgain = reviewsData.reduce(
-          (acc, r) => acc + (r.would_take_again ? 1 : 0),
+      // 3) Añadir nombre del curso a cada review
+      const reviewsWithCourse = await Promise.all(
+        (reviewsData || []).map(async (r) => {
+          const { data: courseData } = await supabase
+            .from('courses')
+            .select('name')
+            .eq('id', r.course_id)
+            .single();
+
+          // Asegurarse de que los tags sean un array
+          const tagsArray = Array.isArray(r.professor_tags)
+            ? r.professor_tags
+            : r.professor_tags
+            ? [r.professor_tags]
+            : [];
+
+          return {
+            ...r,
+            course_name: courseData?.name || 'Materia desconocida',
+            professor_tags: tagsArray,
+          };
+        })
+      );
+
+      setReviews(reviewsWithCourse);
+
+      // 4) Calcular promedios y porcentaje "volverían a tomar"
+      if (reviewsWithCourse.length > 0) {
+        const total = reviewsWithCourse.length;
+        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (r.score || 0), 0);
+        const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (r.difficulty || 0), 0);
+        const takeAgainCount = reviewsWithCourse.reduce(
+          (acc, r) => acc + (r.take_again ? 1 : 0),
           0
         );
 
-        setAvgRating((sumScore / total).toFixed(2));
+        setAvgRating((sumRating / total).toFixed(2));
         setAvgDifficulty((sumDifficulty / total).toFixed(2));
-        setWouldTakeAgain(((sumWouldTakeAgain / total) * 100).toFixed(0));
+        setWouldTakeAgain(Math.round((takeAgainCount / total) * 100));
+      } else {
+        setAvgRating(null);
+        setAvgDifficulty(null);
+        setWouldTakeAgain(null);
       }
 
-     /*  // 4️⃣ Top 3 etiquetas
-      const tagCounts = {};
-      reviewsData.forEach(r => {
-        (r.tags || []).forEach(tag => {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
+      // 5) Calcular top 3 tags
+      const allTags = [];
+      reviewsWithCourse.forEach((r) => {
+        r.professor_tags.forEach((tag) => allTags.push(tag));
       });
+
+      const tagCounts = allTags.reduce((acc, tag) => {
+        acc[tag] = (acc[tag] || 0) + 1;
+        return acc;
+      }, {});
+
       const sortedTags = Object.entries(tagCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([tag]) => tag);
-      setTopTags(sortedTags); */
 
-      // 5️⃣ Materias que dicta
-      const courseIds = [...new Set(reviewsData.map(r => r.course_id))];
-      const { data: coursesData } = await supabase
-        .from('courses')
-        .select('*')
-        .in('id', courseIds);
-      setCoursesTaught(coursesData || []);
+      setTopTags(sortedTags);
+
+      // 6) Cursos del profesor
+      const courseIds = [...new Set(reviewsWithCourse.map((r) => r.course_id))];
+      const coursesData = await Promise.all(
+        courseIds.map(async (id) => {
+          const { data: c } = await supabase
+            .from('courses')
+            .select('id, name')
+            .eq('id', id)
+            .single();
+          return c;
+        })
+      );
+      setCoursesTaught(coursesData.filter(Boolean));
 
     } catch (err) {
       console.log(err);
@@ -100,7 +131,7 @@ export function useProfessorDetails(professorId) {
     avgRating,
     avgDifficulty,
     wouldTakeAgain,
-
+    topTags,
     coursesTaught,
     loading,
     error,
