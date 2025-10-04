@@ -12,13 +12,15 @@ import { useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourseDetails } from '../hooks/useCourseDetails';
 import SearchResultItem from '../components/SearchResultItem';
+import BackHeader from '../components/BackHeader';
+
 
 // 🎨 Colores
 const COLORS = {
   seasalt: '#F6F7F8',
   utOrange: '#FF8200',
   columbiaBlue: '#CFE1FB',
-  yinmnBlue: '#2B529A',
+  yinmnBlue: '#4C78C9',
   resolutionBlue: '#003087',
 };
 
@@ -39,17 +41,13 @@ export default function CourseScreen() {
   const [selectedProfessor, setSelectedProfessor] = useState(null);
 
   const filteredReviews = selectedProfessor
-    ? reviews.filter(
-        (r) =>
-          r.profesor_id === selectedProfessor ||
-          r.profesor_nombre === selectedProfessor
-      )
+    ? reviews.filter((r) => r.professor_id === selectedProfessor)
     : reviews;
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.resolutionBlue} />
+        <ActivityIndicator size="large" color={COLORS.utOrange} />
       </View>
     );
   }
@@ -71,20 +69,40 @@ export default function CourseScreen() {
   }
 
   return (
-<SafeAreaView edges={['top', 'left', 'right']} style={{ backgroundColor: COLORS.resolutionBlue }}>
-  <View style={{ paddingVertical: 40, paddingHorizontal: 20, alignItems: 'center' }}>
-    <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#FFF', textAlign: 'center' }}>
-      {course.name}
-    </Text>
-  </View>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
+  <BackHeader
+    onBack={() => navigation.navigate('HomeScreen')}
+  />
+      {/* Header naranja */}
+      <View
+        style={{
+          paddingVertical: 40,
+          paddingHorizontal: 20,
+          alignItems: 'center',
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 32,
+            fontWeight: 'bold',
+            color: '#FFF',
+            textAlign: 'center',
+          }}
+        >
+          {course.name}
+        </Text>
+        
+      </View>
 
-  {/* ScrollView con fondo claro para el resto */}
-  <ScrollView
-    contentContainerStyle={{ padding: 20, paddingBottom: 40, backgroundColor: COLORS.seasalt }}
-    showsVerticalScrollIndicator={false}
-  >
-  
-
+      {/* ScrollView con resto del contenido */}
+      <ScrollView
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: 40,
+          backgroundColor: COLORS.seasalt,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Promedios */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -101,7 +119,7 @@ export default function CourseScreen() {
         <Text style={styles.sectionTitle}>Profesores</Text>
         <FlatList
           data={professorsAggregated}
-          keyExtractor={(item, index) => String(item.profesorId || index)}
+          keyExtractor={(item, index) => String(item.professor_id || index)}
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginBottom: 20 }}
@@ -115,9 +133,9 @@ export default function CourseScreen() {
               }}
               onPress={() =>
                 setSelectedProfessor(
-                  selectedProfessor === (item.profesorId || item.nombre)
+                  selectedProfessor === item.professor_id
                     ? null
-                    : item.profesorId || item.nombre
+                    : item.professor_id
                 )
               }
             />
@@ -141,10 +159,10 @@ export default function CourseScreen() {
                 <Text style={styles.reviewDate}>
                   {new Date(item.created_at).toLocaleDateString('es-ES')}
                 </Text>
-                <Text>Satisfacción: {item.satisfaccion}</Text>
-                <Text>Dificultad: {item.dificultad}</Text>
+                <Text>Satisfacción: {item.satisfaction}</Text>
+                <Text>Dificultad: {item.dificulty}</Text>
                 <Text style={styles.reviewComment}>
-                  {item.comentario || 'Sin comentario'}
+                  {item.reviewComment || 'Sin comentario'}
                 </Text>
               </View>
             )}
@@ -156,42 +174,11 @@ export default function CourseScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.seasalt,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Header estilo HomeScreen
-  courseHeader: {
-    backgroundColor: COLORS.resolutionBlue,
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  courseHeroTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  courseHeroSubtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-
-  // Stats
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -199,7 +186,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: COLORS.columbiaBlue,
+    backgroundColor: '#EBEAEA',
     padding: 14,
     borderRadius: 12,
     marginRight: 12,
@@ -212,18 +199,15 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 18,
-    color: COLORS.utOrange,
+    color: COLORS.yinmnBlue,
     fontWeight: 'bold',
   },
-
   sectionTitle: {
     marginBottom: 8,
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.yinmnBlue,
+    color: COLORS.utOrange,
   },
-
-  // Reseñas
   reviewCard: {
     backgroundColor: COLORS.columbiaBlue,
     padding: 14,
@@ -245,30 +229,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     marginTop: 4,
-
   },
-  courseHeader: {
-  backgroundColor: COLORS.resolutionBlue,
-  paddingVertical: 40,
-  paddingHorizontal: 20,
-  alignItems: 'center', // centro horizontal
-},
-courseHeroTitle: {
-  fontSize: 32,
-  fontWeight: 'bold',
-  color: '#FFFFFF',
-  textAlign: 'center',
-},
-courseHeroSubtitle: {
-  fontSize: 16,
-  color: 'rgba(255,255,255,0.8)',
-  textAlign: 'center',
-  marginTop: 6,
-},
-scrollContent: {
-  paddingHorizontal: 20,
-  paddingTop: 20, // deja espacio entre header y contenido
-  paddingBottom: 40,
-},
-
 });

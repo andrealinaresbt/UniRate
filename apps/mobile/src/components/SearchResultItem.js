@@ -101,17 +101,21 @@
       borderRadius: 16,
       minWidth: 80,
       alignItems: 'center',
+      
     },
     professorBadge: {
       backgroundColor: '#2b529a',
+      
+     
     },
     courseBadge: {
       backgroundColor: '#ff8200',
+      
     },
     typeText: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#003087',
+       color: '#f6f7f8',
     },
     infoContainer: {
       marginBottom: 16,
