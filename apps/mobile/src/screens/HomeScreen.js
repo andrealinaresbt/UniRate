@@ -204,13 +204,13 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D2C54',
+    backgroundColor: '#003087',
   },
   safeAreaTop: {
-    backgroundColor: '#0D2C54',
+    backgroundColor: '#003087',
   },
   topSafeAreaContent: {
-    backgroundColor: '#0D2C54',
+    backgroundColor: '#003087',
   },
   safeAreaContent: {
     flex: 1,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   
   // Sección superior
   topSection: {
-    backgroundColor: '#0D2C54',
+    backgroundColor: '#003087',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 25,
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0D2C54',
+    color: '#003087',
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   examplesTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0D2C54',
+    color: '#003087',
     marginBottom: 12,
   },
   exampleTags: {

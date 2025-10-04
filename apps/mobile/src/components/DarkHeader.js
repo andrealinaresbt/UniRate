@@ -19,7 +19,7 @@ export const Header = ({ onMenuPress }) => (
 const styles = StyleSheet.create({
   header: {
     width: '100%',
-    backgroundColor: '#0D2C54', 
+    backgroundColor: '#003087', 
     paddingTop: Platform.OS === 'android' ? 10 : 5,
     paddingBottom: 10,
     paddingHorizontal: 20,

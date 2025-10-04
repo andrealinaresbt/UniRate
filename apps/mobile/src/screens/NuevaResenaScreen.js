@@ -249,7 +249,7 @@ export default function NuevaResenaScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, padding: 20, backgroundColor: '#F7F9FC' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, color: '#0D2C54' },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, color: '#003087' },
   label: { fontSize: 14, fontWeight: '600', marginBottom: 6, color: '#333' },
   labelInline: { fontSize: 14, fontWeight: '600', color: '#333' },
   input: {
@@ -265,10 +265,10 @@ const styles = StyleSheet.create({
   selectText: { color: '#333' },
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#EEF2F7' },
-  tagActive: { backgroundColor: '#0D2C54' },
-  tagText: { fontSize: 12, color: '#0D2C54', fontWeight: '600' },
+  tagActive: { backgroundColor: '#003087' },
+  tagText: { fontSize: 12, color: '#003087', fontWeight: '600' },
   tagTextActive: { color: '#FFF' },
-  button: { height: 50, borderRadius: 12, backgroundColor: '#0D2C54', alignItems: 'center', justifyContent: 'center' },
+  button: { height: 50, borderRadius: 12, backgroundColor: '#003087', alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: '#FFF', fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 20 },

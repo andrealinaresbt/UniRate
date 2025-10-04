@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0D2C54',
+    color: '#003087',
     marginBottom: 10,
   },
   message: {

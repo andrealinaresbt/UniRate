@@ -122,7 +122,7 @@ const s = StyleSheet.create({
   },
   btnDis: { opacity: 0.6 },
   btnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  link: { textAlign: 'center', color: '#0D2C54', marginTop: 6, fontWeight: '600' },
+  link: { textAlign: 'center', color: '#003087', marginTop: 6, fontWeight: '600' },
   back: { textAlign: 'center', color: '#2B529A', marginTop: 6, fontWeight: '600' },
 })
 
