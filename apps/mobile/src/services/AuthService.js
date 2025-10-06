@@ -1,11 +1,11 @@
 // services/AuthService.js
 import { supabase } from './supabaseClient'
-import { isUnimetEmail } from '../utils/email'
+import { isUnimetCorreoEmail } from '../utils/email' // Cambia aquí
 
 // ------ AUTH ------
 // services/AuthService.js
 export async function login(email, password) {
-  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.')
+  if (!isUnimetCorreoEmail(email)) throw new Error('Dominio de email no permitido.') // Cambia aquí
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) throw new Error(error.message || 'No se pudo iniciar sesión.')
   if (!data?.session) throw new Error('Supabase no devolvió sesión.')
@@ -14,7 +14,7 @@ export async function login(email, password) {
 
 
 export async function register(email, password) {
-  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.')
+  if (!isUnimetCorreoEmail(email)) throw new Error('Dominio de email no permitido.') // Cambia aquí
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) throw new Error(error.message || 'No se pudo registrar.')
   return data

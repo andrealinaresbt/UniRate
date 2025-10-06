@@ -20,3 +20,10 @@ export function isUnimetCorreoEmail(email) {
          validateEmailDomain(email, ['correo.unimet.edu.ve']);
 }
 
+export function validatePassword(password) {
+  if (typeof password !== 'string') return false;
+  // Al menos 8 caracteres, 1 número, 1 mayúscula, 1 caracter especial
+  const re = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=\[\]{};:'",.<>?/\\|`~]).{8,}$/;
+  return re.test(password);
+}
+

@@ -1,8 +1,8 @@
 import { supabase } from './supabaseClient'
-import { isUnimetEmail } from '../utils/email'
+import { isUnimetCorreoEmail } from '../utils/email' // <-- Cambia aquí
 
 export async function registerUser({ email, password, nombre, carrera }) {
-  if (!isUnimetEmail(email)) throw new Error('Dominio de email no permitido.')
+  if (!isUnimetCorreoEmail(email)) throw new Error('Dominio de email no permitido.')
 
   // Verificar si el email ya existe
   const { data: existing, error: existingError } = await supabase

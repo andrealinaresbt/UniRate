@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auth | UniRate</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; margin: 24px; }
+    .card { max-width: 420px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+    h3 { margin-top: 0; }
+    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; }
+    button { width: 100%; padding: 10px; border: 0; border-radius: 6px; cursor: pointer; }
+    .primary { background: #0d2c54; color: #fff; }
+    .link { margin-top: 10px; display: block; text-align: center; }
+    .ok { color: #0a7a0a; }
+    .err { color: #a00; }
+    .muted { color: #666; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3 id="title">Procesando…</h3>
+    <p id="desc" class="muted">Espera un momento.</p>
+
+    <div id="recovery" style="display:none;">
+      <input id="pwd1" type="password" placeholder="Nueva contraseña" autocomplete="new-password" />
+      <input id="pwd2" type="password" placeholder="Repite la contraseña" autocomplete="new-password" />
+      <button id="save" class="primary">Guardar contraseña</button>
+      <p id="msg" class="muted"></p>
+    </div>
+
+    <div id="done" style="display:none;">
+      <p id="doneMsg" class="ok">Listo.</p>
+      <!-- Opcional: volver a la app nativa si tienes deep link propio -->
+      <!-- <a id="openApp" class="link" href="myapp://auth-callback">Volver a la app</a> -->
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // ==== CONFIG ====
+    const SUPABASE_URL = 'https://TU-PROJECT-URL.supabase.co';
+    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    // Opcional: deep link de tu app si quieres botón "Abrir app"
+    const APP_DEEP_LINK = null; // p.ej. 'myapp://auth-callback' o 'exp://127.0.0.1:19000'
+
+    const sp = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Supabase usa fragmento hash tras '#'. Lo convertimos a query para fácil lectura.
+    const hash = location.hash.startsWith('#') ? location.hash.slice(1) : '';
+    const merged = new URLSearchParams(hash); // tokens suelen venir en el hash
+    // También consideramos querystring normal (?flow=google)
+    const qs = new URLSearchParams(location.search);
+    for (const [k, v] of qs.entries()) if (!merged.has(k)) merged.set(k, v);
+
+    const byId = (id) => document.getElementById(id);
+    const show = (id, vis) => byId(id).style.display = vis ? 'block' : 'none';
+
+    async function ensureSessionFromSupabaseParams() {
+      // En recovery y OAuth, Supabase retorna access_token en el hash.
+      const access_token = merged.get('access_token');
+      const refresh_token = merged.get('refresh_token') || null;
+      const type = merged.get('type'); // 'recovery' en reset de contraseña
+      const flow = merged.get('flow'); // 'google' en nuestro signInWithOAuth
+
+      if (!access_token) {
+        // Sin token: puede ser link inválido o expirado
+        byId('title').textContent = 'Enlace inválido o expirado';
+        byId('desc').textContent = 'Solicita un nuevo enlace desde la app.';
+        return { ok: false, type };
+      }
+
+      const { error } = await sp.auth.setSession({ access_token, refresh_token });
+      if (error) {
+        byId('title').textContent = 'No se pudo iniciar sesión con el enlace';
+        byId('desc').textContent = error.message;
+        return { ok: false, type };
+      }
+
+      // Sesión creada correctamente
+      if (type === 'recovery') {
+        byId('title').textContent = 'Restablecer contraseña';
+        byId('desc').textContent = 'Ingresa tu nueva contraseña.';
+        show('recovery', true);
+        return { ok: true, type: 'recovery' };
+      } else {
+        // OAuth Google u otro
+        byId('title').textContent = 'Autenticación completada';
+        byId('desc').textContent = flow === 'google'
+          ? 'Tu sesión con Google está activa.'
+          : 'Tu sesión está activa.';
+        show('done', true);
+        if (APP_DEEP_LINK) {
+          // Opcional: mostrar botón para volver a la app
+          const a = document.createElement('a');
+          a.href = APP_DEEP_LINK;
+          a.className = 'link';
+          a.textContent = 'Abrir la app';
+          byId('done').appendChild(a);
+        }
+        return { ok: true, type: 'oauth' };
+      }
+    }
+
+    async function saveNewPassword() {
+      const p1 = byId('pwd1').value.trim();
+      const p2 = byId('pwd2').value.trim();
+      const msg = byId('msg');
+
+      if (!p1 || p1.length < 8) { msg.textContent = 'Usa mínimo 8 caracteres.'; return; }
+      if (p1 !== p2) { msg.textContent = 'Las contraseñas no coinciden.'; return; }
+
+      msg.textContent = 'Guardando…';
+      const { error } = await sp.auth.updateUser({ password: p1 });
+      if (error) {
+        msg.className = 'err';
+        msg.textContent = error.message;
+        return;
+      }
+      msg.className = 'ok';
+      msg.textContent = 'Contraseña actualizada.';
+      show('recovery', false);
+      byId('doneMsg').textContent = 'Contraseña actualizada.';
+      show('done', true);
+    }
+
+    byId('save').addEventListener('click', saveNewPassword);
+
+    // Ejecuta
+    ensureSessionFromSupabaseParams();
+  </script>
+</body>
+</html>

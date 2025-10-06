@@ -6,7 +6,8 @@ import {
 } from 'react-native'
 import { registerUser } from '../services/RegisterService'
 import { login } from '../services/AuthService'
-import { isUnimetEmail } from '../utils/email'
+import { isUnimetCorreoEmail } from '../utils/email' // <-- Cambia aquí
+import { validatePassword } from '../utils/password'
 
 const CARRERAS = [
   'Ingeniería Química',
@@ -29,12 +30,21 @@ export default function RegisterScreen({ navigation }) {
     if (!e || !password || !confirmPassword) {
       return Alert.alert('Faltan datos', 'Completa todos los campos obligatorios.')
     }
-    if (!isUnimetEmail(e)) {
+    if (!isUnimetCorreoEmail(e)) {
       return Alert.alert('Email inválido', 'Usa tu correo @unimet.edu.ve o @correo.unimet.edu.ve.')
     }
     if (password !== confirmPassword) {
       return Alert.alert('Contraseña', 'Las contraseñas no coinciden.')
     }
+    if (!isUnimetCorreoEmail(e)) {
+  return Alert.alert('Email inválido', 'Usa tu correo @unimet.edu.ve o @correo.unimet.edu.ve.')
+}
+if (!validatePassword(password)) {
+      return Alert.alert(
+        'Contraseña inválida',
+        'Debe tener mínimo 8 caracteres, incluir al menos 1 mayúscula, 1 número y 1 carácter especial.'
+      )
+   }
     try {
       setBusy(true)
       await registerUser({

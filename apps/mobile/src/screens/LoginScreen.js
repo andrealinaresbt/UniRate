@@ -5,7 +5,7 @@ import {
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
 import { login, resetPassword } from '../services/AuthService'
-import { isUnimetEmail } from '../utils/email'
+import { isUnimetCorreoEmail } from '../utils/email'
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('')
@@ -15,15 +15,22 @@ export default function LoginScreen({ navigation }) {
 
   async function onLogin() {
     const e = email.trim()
-    if (!e || !password) return Alert.alert('Faltan datos', 'Ingresa email y contraseña.')
-    if (!isUnimetEmail(e)) return Alert.alert('Email inválido', 'Usa tu correo @unimet.edu.ve o @correo.unimet.edu.ve.')
+    console.log('Email:', e, 'Password:', password)
+    if (!e || !password) {
+      console.log('Campos vacíos')
+      return Alert.alert('Faltan datos', 'Ingresa email y contraseña.')
+    }
+    if (!isUnimetCorreoEmail(e)) {
+      return Alert.alert('Email inválido', 'Usa tu correo @unimet.edu.ve o @correo.unimet.edu.ve.')
+    }
 
+    console.log('Botón Entrar presionado, llamando login...')
     try {
       setBusy(true)
       const session = await login(e, password)
       if (!session?.user?.id) throw new Error('Sesión inválida')
 
-      // Navega al Home y limpia la pila
+      console.log('Login exitoso, navegando a Home')
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
     } catch (err) {
       Alert.alert('Error', err.message || 'No se pudo iniciar sesión.')
@@ -47,10 +54,7 @@ export default function LoginScreen({ navigation }) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.select({ ios: 'padding', android: undefined })}
-    >
+    <View style={{ flex: 1 }}>
       <View style={s.c}>
         <Text style={s.title}>Iniciar sesión</Text>
 
@@ -92,7 +96,7 @@ export default function LoginScreen({ navigation }) {
           <Text style={s.link}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 

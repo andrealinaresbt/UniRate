@@ -36,7 +36,7 @@ export default function App() {
           {/* Login / Registro (mantengo alias por compatibilidad) */}
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ title: 'Registro', headerShown: false }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro', headerShown: false }} />
+          
 
           {/* Reseñas */}
           <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Publicar Reseña' }} />
