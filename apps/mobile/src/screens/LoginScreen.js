@@ -4,8 +4,11 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
-import { login, resetPassword } from '../services/AuthService'
+import { login, sendResetEmail, signInWithGoogle } from '../services/AuthService';
+
 import { isUnimetCorreoEmail } from '../utils/email'
+
+
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('')
@@ -44,7 +47,7 @@ export default function LoginScreen({ navigation }) {
       Alert.alert('Recuperar contraseña', 'Por favor ingresa tu correo en el campo de email.');
       return;
     }
-    resetPassword(email.trim())
+    sendResetEmail(email.trim())
       .then(() => {
         Alert.alert('Recuperar contraseña', 'Si el correo existe, recibirás instrucciones para restablecer tu contraseña.');
       })
@@ -52,6 +55,12 @@ export default function LoginScreen({ navigation }) {
         Alert.alert('Error', err.message || 'No se pudo enviar el correo de recuperación.');
       });
   }
+  // dentro del componente
+function onGoogle() {
+  if (busy) return;
+  signInWithGoogle();
+}
+
 
   return (
     <View style={{ flex: 1 }}>
@@ -87,6 +96,12 @@ export default function LoginScreen({ navigation }) {
         <TouchableOpacity style={[s.btn, busy && s.btnDis]} onPress={onLogin} disabled={busy}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Entrar</Text>}
         </TouchableOpacity>
+
+        {/* botón Google */}
+<TouchableOpacity style={[s.btnGoogle, busy && s.btnDis]} onPress={onGoogle} disabled={busy}>
+  <Text style={s.btnGoogleTxt}>Continuar con Google (Soon)</Text>
+</TouchableOpacity>
+
 
         <TouchableOpacity onPress={() => navigation.navigate('RegisterScreen')}>
           <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
@@ -128,5 +143,12 @@ const s = StyleSheet.create({
   btnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
   link: { textAlign: 'center', color: '#003087', marginTop: 6, fontWeight: '600' },
   back: { textAlign: 'center', color: '#2B529A', marginTop: 6, fontWeight: '600' },
+// en StyleSheet
+btnGoogle: {
+  height: 50, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+  backgroundColor: '#fff', marginTop: 8, borderWidth: 1, borderColor: '#CFE1FB'
+},
+btnGoogleTxt: { color: '#2B529A', fontSize: 16, fontWeight: '700' },
+
 })
 

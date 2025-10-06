@@ -1,6 +1,7 @@
 // services/AuthService.js
 import { supabase } from './supabaseClient'
 import { isUnimetCorreoEmail } from '../utils/email' // Cambia aquí
+import { Linking } from 'react-native';
 
 // ------ AUTH ------
 // services/AuthService.js
@@ -52,4 +53,18 @@ export async function resetPassword(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email)
   if (error) throw new Error(error.message || 'No se pudo enviar el correo de recuperación.')
   return true
+}
+const WEB_AUTH_URL = 'https://unirateweb.vercel.app/';
+
+export async function sendResetEmail(email) {
+  // Envía el correo con link que abre tu página web
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: WEB_AUTH_URL,
+  });
+}
+
+export function signInWithGoogle() {
+  // Abre la página que inicia el flujo OAuth de Google
+  const url = `${WEB_AUTH_URL}?start=google`;
+  return Linking.openURL(url);
 }

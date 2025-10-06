@@ -7,7 +7,7 @@ import {
 import { registerUser } from '../services/RegisterService'
 import { login } from '../services/AuthService'
 import { isUnimetCorreoEmail } from '../utils/email' // <-- Cambia aquí
-import { validatePassword } from '../utils/password'
+import { validatePassword } from '../utils/email'
 
 const CARRERAS = [
   'Ingeniería Química',
