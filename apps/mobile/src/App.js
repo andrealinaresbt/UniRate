@@ -7,6 +7,7 @@ import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
+import ViewReviewScreen from './screens/ViewReviewScreen';
 import ProfessorProfile from './screens/ProfessorProfile';
 import CourseProfile from './screens/CourseProfile';
 
@@ -40,7 +41,8 @@ export default function App() {
 
           {/* Reseñas */}
           <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Publicar Reseña' }} />
-
+          <Stack.Screen name="ViewReview" component={ViewReviewScreen} options={{ title: 'Reseñas' }} />
+          
           {/* Perfiles */}
           <Stack.Screen name="ProfessorProfile" component={ProfessorProfile} options={{ headerShown: false }} />
           <Stack.Screen name="CourseProfile" component={CourseProfile} options={{ headerShown: false }} />

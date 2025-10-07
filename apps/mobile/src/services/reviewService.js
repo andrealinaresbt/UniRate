@@ -136,3 +136,35 @@ export const ReviewService = {
     }
   },
 };
+
+export async function getReviews(filters = {}) {
+  const {
+    professor_id,
+    course_id,
+    min_rating,
+    min_difficulty,
+    orderBy = 'created_at',
+    order = 'desc',
+    limit = 20,
+    offset = 0,
+  } = filters;
+
+  let query = supabase
+    .from('reviews')
+    .select(`
+      *,
+      professors ( id, full_name ),
+      courses ( id, name, code )
+    `, { count: 'exact' })
+    .order(orderBy, { ascending: order === 'asc' })
+    .range(offset, offset + limit - 1);
+
+  if (professor_id) query = query.eq('professor_id', professor_id);
+  if (course_id) query = query.eq('course_id', course_id);
+  if (typeof min_rating === 'number') query = query.gte('calidad', min_rating);
+  if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_difficulty);
+
+  const { data, error, count } = await query;
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data || [], total: count ?? 0 };
+}
