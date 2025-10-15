@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/DarkHeader';
@@ -27,6 +29,7 @@ export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const {
     searchTerm,
@@ -51,20 +54,15 @@ export default function HomeScreen({ navigation }) {
     return () => { alive = false; };
   }, [user?.id]);
 
-  // Helper to fetch course reviews
-  const fetchCourseReviews = async (courseId) => {
-    const { data: reviewsData, error } = await supabase
-      .from('reviews')
-      .select('score')
-      .eq('course_id', courseId);
-
-    if (error) {
-      console.log('Error fetching course reviews:', error);
-      return [];
-    }
-
-    return reviewsData || [];
-  };
+  // Detectar teclado visible
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const handleResultPress = (item) => {
     if (item.type === 'professor') {
@@ -82,20 +80,47 @@ export default function HomeScreen({ navigation }) {
 
   const renderResultItem = ({ item }) => {
     if (item.type === 'course') {
-      return (
-        <CourseResultItem item={item} onPress={handleResultPress} />
-      );
+      return <CourseResultItem item={item} onPress={handleResultPress} />;
     }
-    return (
-      <SearchResultItem item={item} onPress={() => handleResultPress(item)} />
-    );
+    return <SearchResultItem item={item} onPress={() => handleResultPress(item)} />;
   };
 
   const [showErrorPopup, setShowErrorPopup] = useState(false);
+  useEffect(() => { if (error) setShowErrorPopup(true); }, [error]);
 
-  useEffect(() => {
-    if (error) setShowErrorPopup(true);
-  }, [error]);
+  // ===== Tooltip state/anim =====
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const tooltipOpacity = useRef(new Animated.Value(0)).current;
+  const tooltipTimerRef = useRef(null);
+
+  const showTooltip = () => {
+    // Cancel previous timer if any
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setTooltipVisible(true);
+    Animated.timing(tooltipOpacity, {
+      toValue: 1,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+
+    // Auto-hide after 1.6s
+    tooltipTimerRef.current = setTimeout(hideTooltip, 1600);
+  };
+
+  const hideTooltip = () => {
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = null;
+    }
+    Animated.timing(tooltipOpacity, {
+      toValue: 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setTooltipVisible(false);
+    });
+  };
+  // ==============================
 
   return (
     <KeyboardAvoidingView 
@@ -135,6 +160,8 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity 
                 style={styles.clearButton} 
                 onPress={clearSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Limpiar búsqueda"
               >
                 <Text style={styles.clearButtonText}>✕</Text>
               </TouchableOpacity>
@@ -185,6 +212,43 @@ export default function HomeScreen({ navigation }) {
         )}
       </SafeAreaView>
 
+      {/* FAB + Tooltip (oculto si teclado visible) */}
+      {!keyboardVisible && (
+        <>
+          {/* Tooltip */}
+          {tooltipVisible && (
+            <Animated.View
+              style={[
+                styles.tooltipContainer,
+                { opacity: tooltipOpacity, transform: [{ translateY: -4 }] },
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.tooltipBubble}>
+                <Text style={styles.tooltipText}>Crear reseña</Text>
+                {/* Flechita */}
+                <View style={styles.tooltipArrowWrapper}>
+                  <View style={styles.tooltipArrow} />
+                </View>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* FAB */}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.fab}
+            onPress={() => navigation.navigate('NuevaResena')}
+            onLongPress={showTooltip}
+            onPressOut={hideTooltip}
+            accessibilityRole="button"
+            accessibilityLabel="Crear reseña"
+          >
+            <Text style={styles.fabIcon}>＋</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
       <ErrorPopup
         visible={showErrorPopup}
         error={error}
@@ -198,7 +262,6 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// Keep your styles unchanged
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#003087' },
   safeAreaTop: { backgroundColor: '#003087' },
@@ -226,4 +289,50 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#F8F9FA', borderRadius: 16, marginHorizontal: 20, marginTop: 20 },
   emptyText: { fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: '#888', textAlign: 'center' },
+
+// FAB
+fab: {
+  position: 'absolute',
+  right: 20,
+  bottom: 35, // ⬆️ antes estaba en 20, ahora un poco más arriba
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  backgroundColor: '#FF8C42', // tono naranja UniRate
+  justifyContent: 'center',
+  alignItems: 'center',
+
+  // Sombras
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.25,
+  shadowRadius: 4,
+  elevation: 6,
+},
+
+fabIcon: {
+  color: '#FFFFFF',
+  fontSize: 34,
+  fontWeight: '700',
+  lineHeight: 34,
+},
+
+// Tooltip
+tooltipBubble: {
+  backgroundColor: '#FF8C42', // mismo naranja para coherencia
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+  minWidth: 100,
+  alignItems: 'center',
+},
+tooltipArrow: {
+  width: 12,
+  height: 12,
+  backgroundColor: '#FF8C42',
+  transform: [{ rotate: '45deg' }],
+  marginTop: 2,
+},
+
+
 });
