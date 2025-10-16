@@ -20,8 +20,8 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     backgroundColor: '#003087', 
-    paddingTop: Platform.OS === 'android' ? 10 : 5,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'android' ? 20 : 20,
+    paddingBottom: 20,
     paddingHorizontal: 20,
   },
   menuButton: { 
