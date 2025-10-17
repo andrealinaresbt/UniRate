@@ -46,15 +46,15 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     let alive = true;
-    if (user?.id) {
-      fetchIsAdmin(user.id)
+    if (user?.email) {
+      fetchIsAdmin(user.email)
         .then(f => { if (alive) setIsAdmin(!!f); })
         .catch(() => setIsAdmin(false));
     } else {
       setIsAdmin(false);
     }
     return () => { alive = false; };
-  }, [user?.id]);
+  }, [user?.email]);
 
   // Detectar teclado visible
   useEffect(() => {
