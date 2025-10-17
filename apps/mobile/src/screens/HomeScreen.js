@@ -119,6 +119,7 @@ export default function HomeScreen({ navigation }) {
       if (finished) setTooltipVisible(false);
     });
   };
+
   // ==============================
 
   return (
@@ -133,7 +134,11 @@ export default function HomeScreen({ navigation }) {
       />
       <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
         <View style={styles.topSafeAreaContent}>
-          <Header onMenuPress={() => setMenuVisible(true)} />
+          <Header 
+            onMenuPress={() => setMenuVisible(true)}
+            user={user}
+            onLoginPress={() => navigation.navigate('Login')}
+          />
         </View>
       </SafeAreaView>
       
@@ -204,7 +209,7 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeTitle}>¡Bienvenido a UNIRATE!</Text>
               <Text style={styles.welcomeText}>
-                {'Escribe en la barra de búsqueda para encontrar profesores o materias'}
+                {'Escribe en la barra de búsqueda para encontrar profesores y materias'}
               </Text>
             </View>
           </ScrollView>
@@ -212,36 +217,36 @@ export default function HomeScreen({ navigation }) {
       </SafeAreaView>
 
       {/* FAB + Tooltip */}
-      {!keyboardVisible && !showResults && (
+      {user && !keyboardVisible && !showResults &&  (
   <>
-      {tooltipVisible && (
-        <Animated.View
-          style={[
-            styles.tooltipContainer,
-            {
-              opacity: tooltipOpacity,
-              transform: [{ translateY: -10 }],
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.tooltipBubble}>
-            <Text style={styles.tooltipText}>Crear reseña</Text>
-            <View style={styles.tooltipArrow} />
-          </View>
-        </Animated.View>
-      )}
+        {tooltipVisible && (
+          <Animated.View
+            style={[
+              styles.tooltipContainer,
+              {
+                opacity: tooltipOpacity,
+                transform: [{ translateY: -10 }],
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.tooltipBubble}>
+              <Text style={styles.tooltipText}>Crear reseña</Text>
+              <View style={styles.tooltipArrow} />
+            </View>
+          </Animated.View>
+        )}
 
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={styles.fab}
-        onPress={() => navigation.navigate('NuevaResena')}
-        onLongPress={showTooltip}
-        onPressOut={hideTooltip}
-      >
-        <Text style={styles.fabIcon}>＋</Text>
-      </TouchableOpacity>
-    </>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={styles.fab}
+          onPress={() => navigation.navigate('NuevaResena')}
+          onLongPress={showTooltip}
+          onPressOut={hideTooltip}
+        >
+          <Text style={styles.fabIcon}>＋</Text>
+        </TouchableOpacity>
+      </>
     )}
 
       <ErrorPopup
