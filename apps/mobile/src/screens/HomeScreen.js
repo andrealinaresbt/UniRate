@@ -28,11 +28,10 @@ import { ErrorPopup } from '../components/NetErrorPopup';
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
-  const { user, loading: authContextLoading } = useAuth(); // ← Usar loading del contexto
+  const { user, loading: authContextLoading } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  // ELIMINAR: const [authLoading, setAuthLoading] = useState(true); ← YA NO SE NECESITA
 
   const {
     searchTerm,
@@ -52,7 +51,7 @@ export default function HomeScreen({ navigation }) {
         .then(f => { if (alive) setIsAdmin(!!f); })
         .catch(() => setIsAdmin(false));
     } else {
-      // Si no hay usuario o aún está cargando, no es admin
+
       if (alive) setIsAdmin(false);
     }
     
@@ -141,7 +140,7 @@ export default function HomeScreen({ navigation }) {
             onMenuPress={() => setMenuVisible(true)}
             user={user}
             onLoginPress={() => navigation.navigate('Login')}
-            isLoading={authContextLoading} // ← Pasar directamente el loading del contexto
+            isLoading={authContextLoading} 
           />
         </View>
       </SafeAreaView>

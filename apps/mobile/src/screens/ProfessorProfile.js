@@ -182,7 +182,7 @@ export default function ProfessorProfile({ navigation }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { paddingVertical: 40, paddingHorizontal: 20, alignItems: "center" },
+  header: { paddingVertical: 60, paddingHorizontal: 20, alignItems: "center" },
   name: {
     fontSize: 32,
     fontWeight: "bold",
