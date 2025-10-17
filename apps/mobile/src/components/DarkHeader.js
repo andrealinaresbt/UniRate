@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { Svg, Path } from 'react-native-svg';
 
 const MenuIcon = (props) => (
@@ -8,9 +8,9 @@ const MenuIcon = (props) => (
   </Svg>
 );
 
-export const Header = ({ onMenuPress, user, onLoginPress }) => (
+export const Header = ({ onMenuPress, user, onLoginPress, isLoading = false }) => (
   <View style={styles.header}>
-    {/* Botón menú izquierda */}
+    {/* Botón menú izquierda - siempre visible */}
     <TouchableOpacity style={styles.menuButton} onPress={onMenuPress}>
       <MenuIcon />
     </TouchableOpacity>
@@ -18,11 +18,23 @@ export const Header = ({ onMenuPress, user, onLoginPress }) => (
     {/* Espacio central */}
     <View style={styles.center} />
 
-    {/* Botón iniciar sesión derecha - SOLO si no está logueado */}
-    {!user && (
-      <TouchableOpacity style={styles.loginButton} onPress={onLoginPress}>
-        <Text style={styles.loginText}>Iniciar sesión</Text>
-      </TouchableOpacity>
+    {/* Estados del lado derecho */}
+    {isLoading ? (
+      // Durante carga - mostrar spinner
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      </View>
+    ) : (
+      // Cuando la carga ha terminado, decidir qué mostrar
+      !user ? (
+        // No hay usuario - mostrar botón login
+        <TouchableOpacity style={styles.loginButton} onPress={onLoginPress}>
+          <Text style={styles.loginText}>Iniciar sesión</Text>
+        </TouchableOpacity>
+      ) : (
+        // Hay usuario - mostrar placeholder
+        <View style={styles.placeholder} />
+      )
     )}
   </View>
 );
@@ -37,6 +49,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 70, 
   },
   menuButton: { 
     padding: 8,
@@ -44,6 +57,12 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
+  },
+  loadingContainer: {
+    width: 100,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loginButton: {
     paddingHorizontal: 16,
@@ -57,5 +76,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#003087',
+  },
+  placeholder: {
+    width: 100, 
+    height: 36,
   },
 });

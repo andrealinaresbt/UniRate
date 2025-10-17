@@ -28,10 +28,11 @@ import { ErrorPopup } from '../components/NetErrorPopup';
 const { height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, loading: authContextLoading } = useAuth(); // ← Usar loading del contexto
   const [menuVisible, setMenuVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // ELIMINAR: const [authLoading, setAuthLoading] = useState(true); ← YA NO SE NECESITA
 
   const {
     searchTerm,
@@ -46,15 +47,23 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     let alive = true;
-    if (user?.id) {
+    
+    // Solo verificar si es admin cuando tenemos usuario Y el contexto ya terminó de cargar
+    if (user?.id && !authContextLoading) {
       fetchIsAdmin(user.id)
-        .then(f => { if (alive) setIsAdmin(!!f); })
-        .catch(() => setIsAdmin(false));
+        .then(f => { 
+          if (alive) setIsAdmin(!!f); 
+        })
+        .catch(() => { 
+          if (alive) setIsAdmin(false); 
+        });
     } else {
-      setIsAdmin(false);
+      // Si no hay usuario o aún está cargando, no es admin
+      if (alive) setIsAdmin(false);
     }
+    
     return () => { alive = false; };
-  }, [user?.id]);
+  }, [user?.id, authContextLoading]); // ← Depender del loading del contexto
 
   // Detectar teclado visible
   useEffect(() => {
@@ -138,6 +147,7 @@ export default function HomeScreen({ navigation }) {
             onMenuPress={() => setMenuVisible(true)}
             user={user}
             onLoginPress={() => navigation.navigate('Login')}
+            isLoading={authContextLoading} // ← Pasar directamente el loading del contexto
           />
         </View>
       </SafeAreaView>
@@ -262,6 +272,7 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+// Tus estilos se mantienen exactamente igual...
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#003087', paddingTop: 10,},
   safeAreaTop: { backgroundColor: '#003087' , marginTop: 0,},
