@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ActivityIndicator,
+import { Header } from '../components/DarkHeader';
+import {
+  View,
+  Text,
+  FlatList,
   ScrollView,
   StyleSheet,
+  ActivityIndicator,
+  TouchableOpacity,
   Alert
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -16,6 +18,7 @@ import { favoritesService } from '../services/favoritesService';
 import SearchResultItem from '../components/SearchResultItem';
 import BackHeader from '../components/BackHeader';
 
+// 🎨 Colores
 const COLORS = {
   seasalt: '#F6F7F8',
   utOrange: '#FF8200',
@@ -27,7 +30,7 @@ const COLORS = {
 export default function CourseScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { courseId, courseName } = route.params;
+  const { courseId } = route.params;
   const { user } = useAuth();
 
   const {
@@ -40,9 +43,14 @@ export default function CourseScreen() {
     professorsAggregated,
   } = useCourseDetails(courseId);
 
+  const [selectedProfessor, setSelectedProfessor] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  const filteredReviews = selectedProfessor
+    ? reviews.filter((r) => r.professor_id === selectedProfessor)
+    : reviews;
 
   // Verificar si el curso es favorito AL CARGAR
   useEffect(() => {
@@ -101,26 +109,31 @@ export default function CourseScreen() {
     );
   }
 
-  if (error || !course) {
+  if (error) {
     return (
       <View style={styles.center}>
-        <Text>Error al cargar el curso</Text>
+        <Text style={{ color: 'red' }}>Error: {error}</Text>
+      </View>
+    );
+  }
+
+  if (!course) {
+    return (
+      <View style={styles.center}>
+        <Text>No se encontró la materia</Text>
       </View>
     );
   }
 
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
-      <BackHeader onBack={() => navigation.goBack()} />
+      <BackHeader onBack={() => navigation.navigate('HomeScreen')} />
       
-      {/* Header con título y corazón */}
+      {/* Header naranja CON CORAZÓN */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.courseTitle}>
             {course.name}
-          </Text>
-          <Text style={styles.courseCode}>
-            {course.code}
           </Text>
         </View>
         
@@ -139,6 +152,7 @@ export default function CourseScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* ScrollView con resto del contenido - TODO SE MANTIENE IGUAL */}
       <ScrollView
         contentContainerStyle={{
           padding: 20,
@@ -159,12 +173,59 @@ export default function CourseScreen() {
           </View>
         </View>
 
-        {/* Resto de tu contenido... */}
+        {/* Profesores */}
         <Text style={styles.sectionTitle}>Profesores</Text>
-        {/* ... tu código de profesores */}
+        <FlatList
+          data={professorsAggregated}
+          keyExtractor={(item, index) => String(item.professor_id || index)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 20 }}
+          renderItem={({ item }) => (
+            <SearchResultItem
+              item={{
+                full_name: item.nombre,
+                avg_score: item.avgRating,
+                review_count: item.reviewsCount,
+                type: 'professor',
+              }}
+              onPress={() =>
+                setSelectedProfessor(
+                  selectedProfessor === item.professor_id
+                    ? null
+                    : item.professor_id
+                )
+              }
+            />
+          )}
+        />
 
+        {/* Reseñas */}
         <Text style={styles.sectionTitle}>Reseñas</Text>
-        {/* ... tu código de reseñas */}
+        {filteredReviews.length === 0 ? (
+          <Text>No hay reseñas todavía.</Text>
+        ) : (
+          <FlatList
+            data={filteredReviews}
+            keyExtractor={(item) => String(item.id)}
+            scrollEnabled={false} // evita conflictos con ScrollView
+            renderItem={({ item }) => (
+              <View style={styles.reviewCard}>
+                <Text style={styles.reviewProfessor}>
+                  {item.professor_id ? professorsAggregated.find(p => p.professor_id === item.professor_id)?.nombre || 'Profesor desconocido' : 'Profesor desconocido'}
+                </Text>
+                <Text style={styles.reviewDate}>
+                  {new Date(item.created_at).toLocaleDateString('es-ES')}
+                </Text>
+                <Text>Satisfacción: {item.score}</Text>
+                <Text>Dificultad: {item.difficulty}</Text>
+                <Text style={styles.reviewComment}>
+                  {item.comment || 'Sin comentario'}
+                </Text>
+              </View>
+            )}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -176,9 +237,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Header con título y corazón
+  // Nuevos estilos para el header con corazón
   header: {
-    paddingVertical: 60,
+    paddingVertical: 50,
+    paddingTop: 80,
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -191,14 +253,8 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#FFF',
-    textAlign: 'left',
+    textAlign: 'center',
   },
-  courseCode: {
-    fontSize: 16,
-    color: '#FFF',
-    marginTop: 8,
-  },
-  // Botón corazón minimalista
   heartButton: {
     width: 44,
     height: 44,
@@ -214,7 +270,7 @@ const styles = StyleSheet.create({
   heartIconActive: {
     // El corazón rojo ya se muestra con el emoji '❤️'
   },
-  // Estilos existentes
+  // Todos tus estilos originales se mantienen igual
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -243,5 +299,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.utOrange,
+  },
+  reviewCard: {
+    backgroundColor: COLORS.columbiaBlue,
+    padding: 14,
+    marginVertical: 8,
+    borderRadius: 12,
+  },
+  reviewProfessor: {
+    fontWeight: '600',
+    fontSize: 15,
+    color: COLORS.yinmnBlue,
+    marginBottom: 4,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: COLORS.resolutionBlue,
+    marginBottom: 6,
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 4,
   },
 });

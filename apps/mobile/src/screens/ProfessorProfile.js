@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { useProfessorDetails } from "../hooks/useProfessorDetails";
+import { useAuth } from '../services/AuthContext';
+import { favoritesService } from '../services/favoritesService';
 import SearchResultItem from "../components/SearchResultItem";
 import BackHeader from "../components/BackHeader";
 
@@ -24,6 +28,7 @@ const COLORS = {
 export default function ProfessorProfile({ navigation }) {
   const route = useRoute();
   const { professorId } = route.params;
+  const { user } = useAuth();
 
   const {
     professor,
@@ -38,10 +43,62 @@ export default function ProfessorProfile({ navigation }) {
   } = useProfessorDetails(professorId);
 
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteId, setFavoriteId] = useState(null);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const filteredReviews = selectedCourse
     ? reviews.filter((r) => r.course_id === selectedCourse)
     : reviews;
+
+  // Verificar si el profesor es favorito AL CARGAR
+  useEffect(() => {
+    if (user?.id && professorId) {
+      checkIfFavorite();
+    }
+  }, [user?.id, professorId]);
+
+  const checkIfFavorite = async () => {
+    try {
+      const favorite = await favoritesService.isFavorite(user.id, 'professor', null, professorId);
+      setIsFavorite(!!favorite);
+      setFavoriteId(favorite);
+    } catch (error) {
+      console.error('Error verificando favorito:', error);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user) {
+      Alert.alert('Iniciar sesión', 'Debes iniciar sesión para agregar favoritos');
+      navigation.navigate('Login');
+      return;
+    }
+
+    setFavoriteLoading(true);
+    try {
+      if (isFavorite) {
+        // Eliminar de favoritos
+        if (favoriteId) {
+          await favoritesService.removeFavorite(favoriteId);
+        } else {
+          await favoritesService.removeFavoriteByReference(user.id, 'professor', null, professorId);
+        }
+        setIsFavorite(false);
+        setFavoriteId(null);
+      } else {
+        // Agregar a favoritos
+        const newFavorite = await favoritesService.addFavorite(user.id, 'professor', null, professorId);
+        setIsFavorite(true);
+        setFavoriteId(newFavorite.id);
+      }
+    } catch (error) {
+      console.error('Error al modificar favoritos:', error);
+      Alert.alert('Error', 'No se pudo actualizar favoritos');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -72,15 +129,32 @@ export default function ProfessorProfile({ navigation }) {
       {/* SafeArea azul */}
       <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
       <BackHeader onBack={() => navigation.goBack()} />
-      {/* Header azul */}
+      
+      {/* Header azul CON CORAZÓN */}
       <View style={{ backgroundColor: COLORS.resolutionBlue }}>
         <View style={styles.header}>
-          <Text style={styles.name}>{professor.full_name}</Text>
-          <Text style={styles.subtitle}>{professor.department}</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.name}>{professor.full_name}</Text>
+            <Text style={styles.subtitle}>{professor.department}</Text>
+          </View>
+          
+          {/* BOTÓN CORAZÓN MINIMALISTA */}
+          <TouchableOpacity 
+            style={styles.heartButton}
+            onPress={toggleFavorite}
+            disabled={favoriteLoading}
+          >
+            <Text style={[
+              styles.heartIcon,
+              isFavorite && styles.heartIconActive
+            ]}>
+              {favoriteLoading ? '⋯' : (isFavorite ? '❤️' : '🤍')}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Contenedor blanco */}
+      {/* Contenedor blanco - TODO SE MANTIENE IGUAL */}
       <View style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
@@ -119,38 +193,37 @@ export default function ProfessorProfile({ navigation }) {
           {/* Materias */}
           <Text style={styles.sectionTitle}>Materias</Text>
           <FlatList
-  data={coursesTaught}
-  keyExtractor={(item) => item.id}
-  horizontal
-  showsHorizontalScrollIndicator={false}
-  style={{ marginBottom: 20 }}
-  renderItem={({ item }) => {
-    // Calculate avg score for this course
-    const courseReviews = reviews.filter(r => r.course_id === item.id);
-    const avgScore =
-      courseReviews.length > 0
-        ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) /
-           courseReviews.length
-          ).toFixed(2)
-        : null;
+            data={coursesTaught}
+            keyExtractor={(item) => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: 20 }}
+            renderItem={({ item }) => {
+              // Calculate avg score for this course
+              const courseReviews = reviews.filter(r => r.course_id === item.id);
+              const avgScore =
+                courseReviews.length > 0
+                  ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) /
+                     courseReviews.length
+                    ).toFixed(2)
+                  : null;
 
-    return (
-      <SearchResultItem
-        item={{
-          full_name: item.name,
-          avg_score: avgScore,
-          review_count: courseReviews.length,
-          type: 'course',
-          code: item.code,
-        }}
-        onPress={() =>
-          setSelectedCourse(selectedCourse === item.id ? null : item.id)
-        }
-      />
-    );
-  }}
-/>
-
+              return (
+                <SearchResultItem
+                  item={{
+                    full_name: item.name,
+                    avg_score: avgScore,
+                    review_count: courseReviews.length,
+                    type: 'course',
+                    code: item.code,
+                  }}
+                  onPress={() =>
+                    setSelectedCourse(selectedCourse === item.id ? null : item.id)
+                  }
+                />
+              );
+            }}
+          />
 
           {/* Reseñas */}
           <Text style={styles.sectionTitle}>Reseñas</Text>
@@ -182,7 +255,17 @@ export default function ProfessorProfile({ navigation }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { paddingVertical: 60, paddingHorizontal: 20, alignItems: "center" },
+  // Nuevos estilos para el header con corazón
+  header: { 
+    paddingVertical: 60, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  titleContainer: {
+    flex: 1,
+  },
   name: {
     fontSize: 32,
     fontWeight: "bold",
@@ -194,6 +277,22 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     textAlign: "center",
   },
+  heartButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  heartIcon: {
+    fontSize: 24,
+  },
+  heartIconActive: {
+    // El corazón rojo ya se muestra con el emoji '❤️'
+  },
+  // Todos tus estilos originales se mantienen igual
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -232,10 +331,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tagText: {
-    color: "#FFF", // white color
-    fontWeight: "bold", // bold text
+    color: "#FFF",
+    fontWeight: "bold",
   },
-
   reviewCourse: {
     fontWeight: "600",
     fontSize: 15,
