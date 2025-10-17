@@ -1,7 +1,8 @@
 // apps/mobile/src/screens/AdminScreen.js
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useAuth } from '../services/AuthContext';
+import { fetchIsAdmin } from '../services/AuthService';
 
 const Card = ({ emoji, title, subtitle, onPress }) => (
   <Pressable onPress={onPress} style={({ pressed }) => [
@@ -18,9 +19,21 @@ const Card = ({ emoji, title, subtitle, onPress }) => (
 
 export default function AdminScreen({ navigation }) {
   const { user, loading } = useAuth();
+   const [isAdmin, setIsAdmin] = useState(false);
+useEffect(() => {
+   let alive = true;
+   if (user?.email) {
+     fetchIsAdmin(user.email)
+       .then(f => { if (alive) setIsAdmin(!!f); })
+       .catch(() => setIsAdmin(false));
+   } else {
+     setIsAdmin(false);
+   }
+   return () => { alive = false; };
+ }, [user?.email]);
 
   if (loading) return <View style={styles.center}><Text style={{ opacity: 0.6 }}>Cargando…</Text></View>;
-  if (!user || !user.has_unlimited_access)
+  if (!user || !isAdmin)
     return <View style={styles.center}><Text>Acceso restringido. Solo administradores.</Text></View>;
 
   const name = user.full_name || user.name || user.email || 'Admin';

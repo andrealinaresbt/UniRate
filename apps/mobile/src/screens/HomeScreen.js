@@ -47,23 +47,17 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     let alive = true;
-    
-    // Solo verificar si es admin cuando tenemos usuario Y el contexto ya terminó de cargar
-    if (user?.id && !authContextLoading) {
-      fetchIsAdmin(user.id)
-        .then(f => { 
-          if (alive) setIsAdmin(!!f); 
-        })
-        .catch(() => { 
-          if (alive) setIsAdmin(false); 
-        });
+    if (user?.email) {
+      fetchIsAdmin(user.email)
+        .then(f => { if (alive) setIsAdmin(!!f); })
+        .catch(() => setIsAdmin(false));
     } else {
       // Si no hay usuario o aún está cargando, no es admin
       if (alive) setIsAdmin(false);
     }
     
     return () => { alive = false; };
-  }, [user?.id, authContextLoading]); // ← Depender del loading del contexto
+  }, [user?.email]);
 
   // Detectar teclado visible
   useEffect(() => {
