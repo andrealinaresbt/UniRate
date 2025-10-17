@@ -147,8 +147,7 @@ export default function HomeScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeAreaContent} edges={['left', 'right', 'bottom']}>
         <View style={styles.topSection}>
-          <Text style={styles.heroTitle}>Encuentra tu Profesor</Text>
-          
+          <Text style={styles.heroTitle}>Encuentra tus profesores y materias</Text>
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchBar}
