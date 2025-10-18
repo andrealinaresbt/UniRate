@@ -8,6 +8,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
 import ViewReviewScreen from './screens/ViewReviewScreen';
+import ReviewDetailScreen from './screens/ReviewDetailScreen';
 import ProfessorProfile from './screens/ProfessorProfile';
 import CourseProfile from './screens/CourseProfile';
 
@@ -33,6 +34,8 @@ export default function App() {
         >
           {/* Home */}
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'UniRate' }} />
+
+          <Stack.Screen name="ReviewDetail" component={ReviewDetailScreen} options={{ title: 'Reseña' }}/>
 
           {/* Login / Registro (mantengo alias por compatibilidad) */}
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
