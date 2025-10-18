@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Animated,
+  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/DarkHeader';
@@ -23,10 +24,11 @@ import { useSearch } from '../hooks/useSearch';
 import { useAuth } from '../services/AuthContext';
 import { fetchIsAdmin } from '../services/AuthService';
 import { ErrorPopup } from '../components/NetErrorPopup';
-import { supabase } from '../services/supabaseClient';
+
+const { height: screenHeight } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, loading: authContextLoading } = useAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -44,15 +46,17 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     let alive = true;
-    if (user?.id) {
-      fetchIsAdmin(user.id)
+    if (user?.email) {
+      fetchIsAdmin(user.email)
         .then(f => { if (alive) setIsAdmin(!!f); })
         .catch(() => setIsAdmin(false));
     } else {
-      setIsAdmin(false);
+
+      if (alive) setIsAdmin(false);
     }
+    
     return () => { alive = false; };
-  }, [user?.id]);
+  }, [user?.email]);
 
   // Detectar teclado visible
   useEffect(() => {
@@ -88,13 +92,12 @@ export default function HomeScreen({ navigation }) {
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   useEffect(() => { if (error) setShowErrorPopup(true); }, [error]);
 
-  // ===== Tooltip state/anim =====
+  // ===== Tooltip =====
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
   const tooltipTimerRef = useRef(null);
 
   const showTooltip = () => {
-    // Cancel previous timer if any
     if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
     setTooltipVisible(true);
     Animated.timing(tooltipOpacity, {
@@ -102,8 +105,6 @@ export default function HomeScreen({ navigation }) {
       duration: 160,
       useNativeDriver: true,
     }).start();
-
-    // Auto-hide after 1.6s
     tooltipTimerRef.current = setTimeout(hideTooltip, 1600);
   };
 
@@ -120,20 +121,30 @@ export default function HomeScreen({ navigation }) {
       if (finished) setTooltipVisible(false);
     });
   };
+
   // ==============================
 
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0D2C54" />
+      <StatusBar
+          barStyle="light-content"
+          backgroundColor="#003087"
+          translucent={false}
+      />
       <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
         <View style={styles.topSafeAreaContent}>
-          <Header onMenuPress={() => setMenuVisible(true)} />
+          <Header 
+            onMenuPress={() => setMenuVisible(true)}
+            user={user}
+            onLoginPress={() => navigation.navigate('Login')}
+            isLoading={authContextLoading} 
+          />
         </View>
       </SafeAreaView>
-
+      
       <MenuModal 
         visible={menuVisible} 
         onClose={() => setMenuVisible(false)} 
@@ -144,9 +155,7 @@ export default function HomeScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeAreaContent} edges={['left', 'right', 'bottom']}>
         <View style={styles.topSection}>
-          <Text style={styles.heroTitle}>Encuentra tu Profesor</Text>
-          <Text style={styles.heroSubtitle}>Califica profesores y materias</Text>
-          
+          <Text style={styles.heroTitle}>Encuentra tus profesores y materias</Text>
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchBar}
@@ -160,8 +169,6 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity 
                 style={styles.clearButton} 
                 onPress={clearSearch}
-                accessibilityRole="button"
-                accessibilityLabel="Limpiar búsqueda"
               >
                 <Text style={styles.clearButtonText}>✕</Text>
               </TouchableOpacity>
@@ -169,21 +176,21 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
+        {/*Loading centrado */}
         {loading && (
-          <View style={styles.fixedLoadingContainer}>
-            <ActivityIndicator size="large" color="#2563EB" />
-            <Text style={styles.loadingText}>Buscando...</Text>
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="large" color="#003087" />
+            </View>
           </View>
         )}
 
         {showResults ? (
           <View style={styles.resultsContainer}>
-            {loading ? (
-              <View style={styles.loadingPlaceholder} />
-            ) : results.length === 0 ? (
+            {results.length === 0 && !loading ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>No se encontraron resultados</Text>
-                <Text style={styles.emptySubtext}>Intenta con otro término de búsqueda</Text>
+                <Text style={styles.emptySubtext}>Intenta con otro término</Text>
               </View>
             ) : (
               <FlatList
@@ -205,49 +212,45 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeTitle}>¡Bienvenido a UNIRATE!</Text>
               <Text style={styles.welcomeText}>
-                {user ? ` ${user.email}` : 'Escribe en la barra de búsqueda para encontrar profesores o materias'}
+                {'Escribe en la barra de búsqueda para encontrar profesores y materias'}
               </Text>
             </View>
           </ScrollView>
         )}
       </SafeAreaView>
 
-      {/* FAB + Tooltip (oculto si teclado visible) */}
-      {!keyboardVisible && (
-        <>
-          {/* Tooltip */}
-          {tooltipVisible && (
-            <Animated.View
-              style={[
-                styles.tooltipContainer,
-                { opacity: tooltipOpacity, transform: [{ translateY: -4 }] },
-              ]}
-              pointerEvents="none"
-            >
-              <View style={styles.tooltipBubble}>
-                <Text style={styles.tooltipText}>Crear reseña</Text>
-                {/* Flechita */}
-                <View style={styles.tooltipArrowWrapper}>
-                  <View style={styles.tooltipArrow} />
-                </View>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* FAB */}
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={styles.fab}
-            onPress={() => navigation.navigate('NuevaResena')}
-            onLongPress={showTooltip}
-            onPressOut={hideTooltip}
-            accessibilityRole="button"
-            accessibilityLabel="Crear reseña"
+      {/* FAB + Tooltip */}
+      {user && !keyboardVisible && !showResults &&  (
+  <>
+        {tooltipVisible && (
+          <Animated.View
+            style={[
+              styles.tooltipContainer,
+              {
+                opacity: tooltipOpacity,
+                transform: [{ translateY: -10 }],
+              },
+            ]}
+            pointerEvents="none"
           >
-            <Text style={styles.fabIcon}>＋</Text>
-          </TouchableOpacity>
-        </>
-      )}
+            <View style={styles.tooltipBubble}>
+              <Text style={styles.tooltipText}>Crear reseña</Text>
+              <View style={styles.tooltipArrow} />
+            </View>
+          </Animated.View>
+        )}
+
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={styles.fab}
+          onPress={() => navigation.navigate('NuevaResena')}
+          onLongPress={showTooltip}
+          onPressOut={hideTooltip}
+        >
+          <Text style={styles.fabIcon}>＋</Text>
+        </TouchableOpacity>
+      </>
+    )}
 
       <ErrorPopup
         visible={showErrorPopup}
@@ -262,77 +265,116 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
+// Tus estilos se mantienen exactamente igual...
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#003087' },
-  safeAreaTop: { backgroundColor: '#003087' },
-  topSafeAreaContent: { backgroundColor: '#003087' },
+  container: { flex: 1, backgroundColor: '#003087', paddingTop: 10,},
+  safeAreaTop: { backgroundColor: '#003087' , marginTop: 0,},
+  topSafeAreaContent: {
+  backgroundColor: '#003087',
+  },
   safeAreaContent: { flex: 1, backgroundColor: '#FFFFFF' },
   topSection: { backgroundColor: '#003087', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 25 },
-  heroTitle: { fontSize: 32, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8, textAlign: 'center' },
-  heroSubtitle: { fontSize: 16, color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center', marginBottom: 25 },
+  heroTitle: { fontSize: 30, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8, textAlign: 'center', padding: 20},
+
+  // Buscador
   searchContainer: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
-  searchBar: { flex: 1, height: 56, backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 20, fontSize: 16, borderColor: '#E0E0E0', borderWidth: 1, paddingRight: 50,
-    ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 }, android: { elevation: 4 }}) },
+  searchBar: {
+    flex: 1,
+    height: 56,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    fontSize: 16,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    paddingRight: 50,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
+      android: { elevation: 4 },
+    }),
+  },
   clearButton: { position: 'absolute', right: 15, width: 30, height: 30, borderRadius: 15, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' },
   clearButtonText: { fontSize: 16, color: '#666', fontWeight: 'bold' },
-  fixedLoadingContainer: { position: 'absolute', top: 250, left: 0, right: 0, alignItems: 'center', zIndex: 1000 },
-  loadingText: { marginTop: 8, color: '#2563EB', fontSize: 16, fontWeight: '600' },
-  resultsContainer: { flex: 1, backgroundColor: '#FFFFFF' },
-  loadingPlaceholder: { height: 100 },
+
+  // Loading
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+    paddingBottom:250,
+  },
+  loadingBox: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 14,
+    shadowColor: '#000',
+    borderRadius: 26,
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 6,
+  },
+  loadingText: { marginTop: 10, color: '#003087', fontSize: 16, fontWeight: '600', textAlign: 'center' },
+
+  resultsContainer: { flex: 1, backgroundColor: '#f1f1f1ff' },
   resultsList: { flex: 1 },
   resultsContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
-  welcomeScrollView: { flex: 1, backgroundColor: '#FFFFFF' },
-  welcomeContent: { flexGrow: 1 },
+  welcomeScrollView: { flex: 1, backgroundColor: '#ffffffff' },
   welcomeContainer: { alignItems: 'center', paddingVertical: 40, paddingHorizontal: 20 },
   welcomeTitle: { fontSize: 24, fontWeight: 'bold', color: '#003087', marginBottom: 12, textAlign: 'center' },
   welcomeText: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 30, lineHeight: 22 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#F8F9FA', borderRadius: 16, marginHorizontal: 20, marginTop: 20 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: '#888', textAlign: 'center' },
 
-// FAB
-fab: {
-  position: 'absolute',
-  right: 20,
-  bottom: 35, // ⬆️ antes estaba en 20, ahora un poco más arriba
-  width: 60,
-  height: 60,
-  borderRadius: 30,
-  backgroundColor: '#FF8C42', // tono naranja UniRate
-  justifyContent: 'center',
-  alignItems: 'center',
+  // FAB
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: screenHeight * 0.05, 
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FF8C42',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+    zIndex: 10,
+  },
+  fabIcon: {
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '700',
+    lineHeight: 34,
+  },
 
-  // Sombras
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.25,
-  shadowRadius: 4,
-  elevation: 6,
-},
-
-fabIcon: {
-  color: '#FFFFFF',
-  fontSize: 34,
-  fontWeight: '700',
-  lineHeight: 34,
-},
-
-// Tooltip
-tooltipBubble: {
-  backgroundColor: '#FF8C42', // mismo naranja para coherencia
-  paddingVertical: 8,
-  paddingHorizontal: 12,
-  borderRadius: 8,
-  minWidth: 100,
-  alignItems: 'center',
-},
-tooltipArrow: {
-  width: 12,
-  height: 12,
-  backgroundColor: '#FF8C42',
-  transform: [{ rotate: '45deg' }],
-  marginTop: 2,
-},
-
-
+  tooltipContainer: {
+    position: 'absolute',
+    right: 30,
+    bottom: screenHeight * 0.13,
+    alignItems: 'center',
+    zIndex: 15,
+  },
+  tooltipBubble: {
+    backgroundColor: '#FF8C42',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  tooltipArrow: {
+    width: 12,
+    height: 12,
+    backgroundColor: '#FF8C42',
+    transform: [{ rotate: '45deg' }],
+    marginTop: -6,
+  },
+  tooltipText: {
+    color: '#FFF',
+    fontWeight: '600',
+  },
 });

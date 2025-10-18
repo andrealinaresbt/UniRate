@@ -33,7 +33,23 @@ export default function App() {
           }}
         >
           {/* Home */}
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'UniRate' }} />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              title: 'UniRate',
+              headerStyle: {
+                backgroundColor: '#003087',
+                shadowColor: 'transparent', // iOS shadow
+                elevation: 0,               // Android shadow
+                borderBottomWidth: 0,       
+                paddingBottom:0
+              },
+              headerShown: false,
+              headerShadowVisible: false,  
+              headerTintColor: '#fff',
+            }}
+          />
 
           <Stack.Screen name="ReviewDetail" component={ReviewDetailScreen} options={{ title: 'Reseña' }}/>
 

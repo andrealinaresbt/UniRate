@@ -5,6 +5,20 @@ import { Linking } from 'react-native';
 
 // ------ AUTH ------
 // services/AuthService.js
+
+export const ADMIN_EMAILS = new Set([
+  'cristian.gouveia@correo.unimet.edu.ve',
+  'gabriel.brito@correo.unimet.edu.ve',
+  'linares.andrea@correo.unimet.edu.ve',
+  'cfermoso@correo.unimet.edu.ve',
+  'c.atencio@correo.unimet.edu.ve',
+]);
+
+export function isAdminEmail(email) {
+  return !!email && ADMIN_EMAILS.has(String(email).toLowerCase());
+}
+
+
 export async function login(email, password) {
   if (!isUnimetCorreoEmail(email)) throw new Error('Dominio de email no permitido.') // Cambia aquí
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
@@ -34,16 +48,10 @@ export async function getSession() {
 }
 
 
-export async function fetchIsAdmin(userId) {
-  if (!userId) return false
-  const { data, error } = await supabase
-    .from('users') // tu tabla
-    .select('has_unlimited_access')
-    .eq('id', userId)
-    .maybeSingle()
-  if (error) throw new Error(error.message)
-  return Boolean(data?.has_unlimited_access)
+export async function fetchIsAdmin(email) {
+  return Promise.resolve(isAdminEmail(email));
 }
+
 // services/AuthService.js
 export function onAuthStateChange(cb) {
   return supabase.auth.onAuthStateChange((event, session) => cb(event, session ?? null))

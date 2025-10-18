@@ -51,6 +51,7 @@ export default function ProfessorProfile({ navigation }) {
     ? reviews.filter((r) => r.course_id === selectedCourse)
     : reviews;
 
+  // Verificar si el profesor es favorito al cargar
   useEffect(() => {
     if (user?.id && professorId) {
       checkIfFavorite();
@@ -59,7 +60,12 @@ export default function ProfessorProfile({ navigation }) {
 
   const checkIfFavorite = async () => {
     try {
-      const favorite = await favoritesService.isFavorite(user.id, 'professor', null, professorId);
+      const favorite = await favoritesService.isFavorite(
+        user.id,
+        'professor',
+        null,
+        professorId
+      );
       setIsFavorite(!!favorite);
       setFavoriteId(favorite);
     } catch (error) {
@@ -77,15 +83,27 @@ export default function ProfessorProfile({ navigation }) {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
+        // Eliminar de favoritos
         if (favoriteId) {
           await favoritesService.removeFavorite(favoriteId);
         } else {
-          await favoritesService.removeFavoriteByReference(user.id, 'professor', null, professorId);
+          await favoritesService.removeFavoriteByReference(
+            user.id,
+            'professor',
+            null,
+            professorId
+          );
         }
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
-        const newFavorite = await favoritesService.addFavorite(user.id, 'professor', null, professorId);
+        // Agregar a favoritos
+        const newFavorite = await favoritesService.addFavorite(
+          user.id,
+          'professor',
+          null,
+          professorId
+        );
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
       }
@@ -97,15 +115,31 @@ export default function ProfessorProfile({ navigation }) {
     }
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.utOrange} /></View>;
-  if (error) return <View style={styles.center}><Text style={{ color: "red" }}>Error: {error}</Text></View>;
-  if (!professor) return <View style={styles.center}><Text>Profesor no encontrado</Text></View>;
+  if (loading)
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.utOrange} />
+      </View>
+    );
+  if (error)
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: "red" }}>Error: {error}</Text>
+      </View>
+    );
+  if (!professor)
+    return (
+      <View style={styles.center}>
+        <Text>Profesor no encontrado</Text>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
       <BackHeader onBack={() => navigation.goBack()} />
       
+      {/* Header azul con corazón */}
       <View style={{ backgroundColor: COLORS.resolutionBlue }}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
@@ -124,6 +158,7 @@ export default function ProfessorProfile({ navigation }) {
         </View>
       </View>
 
+      {/* Contenido */}
       <View style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           <View style={styles.statsRow}>
@@ -163,9 +198,11 @@ export default function ProfessorProfile({ navigation }) {
             style={{ marginBottom: 20 }}
             renderItem={({ item }) => {
               const courseReviews = reviews.filter(r => r.course_id === item.id);
-              const avgScore = courseReviews.length > 0
-                ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) / courseReviews.length).toFixed(2)
-                : null;
+              const avgScore =
+                courseReviews.length > 0
+                  ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) /
+                    courseReviews.length).toFixed(2)
+                  : null;
 
               return (
                 <SearchResultItem
@@ -212,19 +249,44 @@ export default function ProfessorProfile({ navigation }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { paddingVertical: 60, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+  // Header
+  header: { 
+    paddingVertical: 60, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   titleContainer: { flex: 1 },
   name: { fontSize: 32, fontWeight: "bold", color: "#FFF", textAlign: "center" },
   subtitle: { fontSize: 16, color: "rgba(255,255,255,0.8)", textAlign: "center" },
-  heartButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center', marginLeft: 16 },
+
+  // Favoritos
+  heartButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
   heartIcon: { fontSize: 24 },
+  heartIconActive: {},
+
+  // Stats
   statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
   statCard: { flex: 1, backgroundColor: COLORS.columbiaBlue, padding: 14, borderRadius: 12, marginRight: 12, alignItems: "center" },
   statLabel: { color: COLORS.resolutionBlue, fontWeight: "600", marginBottom: 4 },
   statValue: { fontSize: 18, color: COLORS.resolutionBlue, fontWeight: "bold" },
+
+  // Secciones
   sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: "700", color: COLORS.yinmnBlue },
   tag: { backgroundColor: COLORS.utOrange, padding: 8, borderRadius: 12, marginRight: 8 },
   tagText: { color: "#FFF", fontWeight: "bold" },
+
+  // Cards de reseña
   reviewCard: { backgroundColor: COLORS.columbiaBlue, padding: 14, marginVertical: 8, borderRadius: 12 },
   reviewCourse: { fontWeight: "600", fontSize: 15, color: COLORS.yinmnBlue, marginBottom: 4 },
   reviewDate: { fontSize: 12, color: COLORS.resolutionBlue, marginBottom: 6 },

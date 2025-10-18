@@ -241,7 +241,7 @@ export default function NuevaResenaScreen() {
 
       {/* Switches */}
       <View style={styles.row}>
-        <Text style={styles.labelInline}>Asistencia</Text>
+        <Text style={styles.labelInline}>¿Toma asistencia?</Text>
         <Switch
           value={asistencia}
           onValueChange={setAsistencia}
@@ -250,7 +250,7 @@ export default function NuevaResenaScreen() {
         />
       </View>
       <View style={styles.row}>
-        <Text style={styles.labelInline}>¿Usa texto?</Text>
+        <Text style={styles.labelInline}>¿La materia es mayormente teórica?</Text>
         <Switch
           value={usoTexto}
           onValueChange={setUsoTexto}
@@ -260,7 +260,7 @@ export default function NuevaResenaScreen() {
       </View>
 
       {/* Calificaciones */}
-      <Text style={styles.label}>Calidad (1–5) *</Text>
+      <Text style={styles.label}>Puntuación (1–5) *</Text>
       <TextInput
         style={styles.input}
         value={calidad}
@@ -284,7 +284,7 @@ export default function NuevaResenaScreen() {
 
       {/* Volvería */}
       <View style={styles.row}>
-        <Text style={styles.labelInline}>¿Lo volverías a tomar?</Text>
+        <Text style={styles.labelInline}>¿Recomendarías este profesor?</Text>
         <Switch
           value={volveria}
           onValueChange={setVolveria}

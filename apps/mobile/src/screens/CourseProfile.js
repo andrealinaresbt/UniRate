@@ -50,7 +50,6 @@ export default function CourseScreen() {
     ? reviews.filter((r) => r.professor_id === selectedProfessor)
     : reviews;
 
-  // Verificar si el curso es favorito AL CARGAR
   useEffect(() => {
     if (user?.id && courseId) {
       checkIfFavorite();
@@ -77,7 +76,6 @@ export default function CourseScreen() {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        // Eliminar de favoritos
         if (favoriteId) {
           await favoritesService.removeFavorite(favoriteId);
         } else {
@@ -86,7 +84,6 @@ export default function CourseScreen() {
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
-        // Agregar a favoritos
         const newFavorite = await favoritesService.addFavorite(user.id, 'course', courseId, null);
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
@@ -99,33 +96,32 @@ export default function CourseScreen() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.utOrange} />
       </View>
     );
-  }
-  if (error) {
+
+  if (error)
     return (
       <View style={styles.center}>
         <Text style={{ color: 'red' }}>Error: {error}</Text>
       </View>
     );
-  }
-  if (!course) {
+
+  if (!course)
     return (
       <View style={styles.center}>
         <Text>No se encontró la materia</Text>
       </View>
     );
-  }
 
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
       <BackHeader onBack={() => navigation.navigate('HomeScreen')} />
-      
-      {/* Header naranja CON CORAZÓN */}
+
+      {/* Header con corazón */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.courseTitle}>{course.name}</Text>
@@ -137,7 +133,7 @@ export default function CourseScreen() {
           disabled={favoriteLoading}
         >
           <Text style={[styles.heartIcon, isFavorite && styles.heartIconActive]}>
-            {favoriteLoading ? '⋯' : (isFavorite ? '❤️' : '🤍')}
+            {favoriteLoading ? '⋯' : isFavorite ? '❤️' : '🤍'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -225,7 +221,6 @@ export default function CourseScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
   header: {
     paddingVertical: 50,
     paddingTop: 80,
