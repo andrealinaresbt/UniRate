@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
+  Alert
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,6 +50,7 @@ export default function CourseScreen() {
     ? reviews.filter((r) => r.professor_id === selectedProfessor)
     : reviews;
 
+  // Verificar si el curso es favorito AL CARGAR
   useEffect(() => {
     if (user?.id && courseId) {
       checkIfFavorite();
@@ -58,12 +59,7 @@ export default function CourseScreen() {
 
   const checkIfFavorite = async () => {
     try {
-      const favorite = await favoritesService.isFavorite(
-        user.id,
-        'course',
-        courseId,
-        null
-      );
+      const favorite = await favoritesService.isFavorite(user.id, 'course', courseId, null);
       setIsFavorite(!!favorite);
       setFavoriteId(favorite);
     } catch (error) {
@@ -81,25 +77,17 @@ export default function CourseScreen() {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
+        // Eliminar de favoritos
         if (favoriteId) {
           await favoritesService.removeFavorite(favoriteId);
         } else {
-          await favoritesService.removeFavoriteByReference(
-            user.id,
-            'course',
-            courseId,
-            null
-          );
+          await favoritesService.removeFavoriteByReference(user.id, 'course', courseId, null);
         }
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
-        const newFavorite = await favoritesService.addFavorite(
-          user.id,
-          'course',
-          courseId,
-          null
-        );
+        // Agregar a favoritos
+        const newFavorite = await favoritesService.addFavorite(user.id, 'course', courseId, null);
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
       }
@@ -136,7 +124,8 @@ export default function CourseScreen() {
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
       <BackHeader onBack={() => navigation.navigate('HomeScreen')} />
-
+      
+      {/* Header naranja CON CORAZÓN */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Text style={styles.courseTitle}>{course.name}</Text>
@@ -148,11 +137,12 @@ export default function CourseScreen() {
           disabled={favoriteLoading}
         >
           <Text style={[styles.heartIcon, isFavorite && styles.heartIconActive]}>
-            {favoriteLoading ? '⋯' : isFavorite ? '❤️' : '🤍'}
+            {favoriteLoading ? '⋯' : (isFavorite ? '❤️' : '🤍')}
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Contenido */}
       <ScrollView
         contentContainerStyle={{
           padding: 20,
@@ -207,9 +197,7 @@ export default function CourseScreen() {
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.reviewCard}
-                onPress={() =>
-                  navigation.navigate('ReviewDetail', { reviewId: item.id })
-                }
+                onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
               >
                 <Text style={styles.reviewProfessor}>
                   {item.professor_id
@@ -237,6 +225,7 @@ export default function CourseScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
   header: {
     paddingVertical: 50,
     paddingTop: 80,
@@ -262,6 +251,7 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   heartIcon: { fontSize: 24 },
+  heartIconActive: {},
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   statCard: {
     flex: 1,
