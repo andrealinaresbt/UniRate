@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Header } from '../components/DarkHeader';
 import {
   View,
   Text,
@@ -18,7 +17,6 @@ import { favoritesService } from '../services/favoritesService';
 import SearchResultItem from '../components/SearchResultItem';
 import BackHeader from '../components/BackHeader';
 
-// 🎨 Colores
 const COLORS = {
   seasalt: '#F6F7F8',
   utOrange: '#FF8200',
@@ -52,7 +50,6 @@ export default function CourseScreen() {
     ? reviews.filter((r) => r.professor_id === selectedProfessor)
     : reviews;
 
-  // Verificar si el curso es favorito AL CARGAR
   useEffect(() => {
     if (user?.id && courseId) {
       checkIfFavorite();
@@ -79,7 +76,6 @@ export default function CourseScreen() {
     setFavoriteLoading(true);
     try {
       if (isFavorite) {
-        // Eliminar de favoritos
         if (favoriteId) {
           await favoritesService.removeFavorite(favoriteId);
         } else {
@@ -88,7 +84,6 @@ export default function CourseScreen() {
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
-        // Agregar a favoritos
         const newFavorite = await favoritesService.addFavorite(user.id, 'course', courseId, null);
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
@@ -101,58 +96,49 @@ export default function CourseScreen() {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.utOrange} />
       </View>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <View style={styles.center}>
         <Text style={{ color: 'red' }}>Error: {error}</Text>
       </View>
     );
-  }
 
-  if (!course) {
+  if (!course)
     return (
       <View style={styles.center}>
         <Text>No se encontró la materia</Text>
       </View>
     );
-  }
 
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
       <BackHeader onBack={() => navigation.navigate('HomeScreen')} />
-      
-      {/* Header naranja CON CORAZÓN */}
+
+      {/* Header con corazón */}
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.courseTitle}>
-            {course.name}
-          </Text>
+          <Text style={styles.courseTitle}>{course.name}</Text>
         </View>
-        
-        {/* BOTÓN CORAZÓN MINIMALISTA */}
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.heartButton}
           onPress={toggleFavorite}
           disabled={favoriteLoading}
         >
-          <Text style={[
-            styles.heartIcon,
-            isFavorite && styles.heartIconActive
-          ]}>
-            {favoriteLoading ? '⋯' : (isFavorite ? '❤️' : '🤍')}
+          <Text style={[styles.heartIcon, isFavorite && styles.heartIconActive]}>
+            {favoriteLoading ? '⋯' : isFavorite ? '❤️' : '🤍'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* ScrollView con resto del contenido - TODO SE MANTIENE IGUAL */}
+      {/* Contenido */}
       <ScrollView
         contentContainerStyle={{
           padding: 20,
@@ -161,7 +147,6 @@ export default function CourseScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Promedios */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>⭐ Calificación</Text>
@@ -173,7 +158,6 @@ export default function CourseScreen() {
           </View>
         </View>
 
-        {/* Profesores */}
         <Text style={styles.sectionTitle}>Profesores</Text>
         <FlatList
           data={professorsAggregated}
@@ -191,16 +175,13 @@ export default function CourseScreen() {
               }}
               onPress={() =>
                 setSelectedProfessor(
-                  selectedProfessor === item.professor_id
-                    ? null
-                    : item.professor_id
+                  selectedProfessor === item.professor_id ? null : item.professor_id
                 )
               }
             />
           )}
         />
 
-        {/* Reseñas */}
         <Text style={styles.sectionTitle}>Reseñas</Text>
         {filteredReviews.length === 0 ? (
           <Text>No hay reseñas todavía.</Text>
@@ -208,11 +189,18 @@ export default function CourseScreen() {
           <FlatList
             data={filteredReviews}
             keyExtractor={(item) => String(item.id)}
-            scrollEnabled={false} // evita conflictos con ScrollView
+            scrollEnabled={false}
             renderItem={({ item }) => (
-              <View style={styles.reviewCard}>
+              <TouchableOpacity
+                style={styles.reviewCard}
+                onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
+              >
                 <Text style={styles.reviewProfessor}>
-                  {item.professor_id ? professorsAggregated.find(p => p.professor_id === item.professor_id)?.nombre || 'Profesor desconocido' : 'Profesor desconocido'}
+                  {item.professor_id
+                    ? professorsAggregated.find(
+                        (p) => p.professor_id === item.professor_id
+                      )?.nombre || 'Profesor desconocido'
+                    : 'Profesor desconocido'}
                 </Text>
                 <Text style={styles.reviewDate}>
                   {new Date(item.created_at).toLocaleDateString('es-ES')}
@@ -222,7 +210,7 @@ export default function CourseScreen() {
                 <Text style={styles.reviewComment}>
                   {item.comment || 'Sin comentario'}
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
           />
         )}
@@ -232,12 +220,7 @@ export default function CourseScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Nuevos estilos para el header con corazón
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     paddingVertical: 50,
     paddingTop: 80,
@@ -246,9 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  titleContainer: {
-    flex: 1,
-  },
+  titleContainer: { flex: 1 },
   courseTitle: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -264,18 +245,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 16,
   },
-  heartIcon: {
-    fontSize: 24,
-  },
-  heartIconActive: {
-    // El corazón rojo ya se muestra con el emoji '❤️'
-  },
-  // Todos tus estilos originales se mantienen igual
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
+  heartIcon: { fontSize: 24 },
+  heartIconActive: {},
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   statCard: {
     flex: 1,
     backgroundColor: '#EBEAEA',
@@ -284,42 +256,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
     alignItems: 'center',
   },
-  statLabel: {
-    color: COLORS.resolutionBlue,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 18,
-    color: COLORS.yinmnBlue,
-    fontWeight: 'bold',
-  },
-  sectionTitle: {
-    marginBottom: 8,
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.utOrange,
-  },
-  reviewCard: {
-    backgroundColor: COLORS.columbiaBlue,
-    padding: 14,
-    marginVertical: 8,
-    borderRadius: 12,
-  },
-  reviewProfessor: {
-    fontWeight: '600',
-    fontSize: 15,
-    color: COLORS.yinmnBlue,
-    marginBottom: 4,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: COLORS.resolutionBlue,
-    marginBottom: 6,
-  },
-  reviewComment: {
-    fontSize: 14,
-    color: '#333',
-    marginTop: 4,
-  },
+  statLabel: { color: COLORS.resolutionBlue, fontWeight: '600', marginBottom: 4 },
+  statValue: { fontSize: 18, color: COLORS.yinmnBlue, fontWeight: 'bold' },
+  sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: '700', color: COLORS.utOrange },
+  reviewCard: { backgroundColor: COLORS.columbiaBlue, padding: 14, marginVertical: 8, borderRadius: 12 },
+  reviewProfessor: { fontWeight: '600', fontSize: 15, color: COLORS.yinmnBlue, marginBottom: 4 },
+  reviewDate: { fontSize: 12, color: COLORS.resolutionBlue, marginBottom: 6 },
+  reviewComment: { fontSize: 14, color: '#333', marginTop: 4 },
 });

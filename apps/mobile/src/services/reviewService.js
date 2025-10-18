@@ -266,3 +266,35 @@ export async function getReviews(filters = {}) {
   if (error) return { success: false, error: error.message };
   return { success: true, data: data || [], total: count ?? 0 };
 }
+
+// Obtener una reseña por ID (sin join a users; 2 consultas seguras)
+export async function getReviewById(id) {
+  // 1) Traer la reseña con joins que sí existen por FK (professors, courses)
+  const { data: review, error } = await supabase
+    .from('reviews')
+    .select(`
+      id, created_at, score, difficulty, would_take_again, comment, trimester,
+      professor_id, course_id, user_id,
+      professors ( id, full_name ),
+      courses ( id, name, code )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  if (!review) return { success: false, error: 'No existe la reseña' };
+
+  // 2) Traer el usuario en una consulta aparte (tu tabla es "users")
+  let user = null;
+  if (review.user_id) {
+    const { data: u, error: e2 } = await supabase
+      .from('users')
+      .select('id, full_name, email')
+      .eq('id', review.user_id)
+      .single();
+    if (!e2) user = u;
+  }
+
+  // 3) Devolver combinado
+  return { success: true, data: { ...review, user } };
+}

@@ -10,7 +10,7 @@ import {
   Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { useRoute } from "@react-navigation/native";
 import { useProfessorDetails } from "../hooks/useProfessorDetails";
 import { useAuth } from '../services/AuthContext';
 import { favoritesService } from '../services/favoritesService';
@@ -51,7 +51,7 @@ export default function ProfessorProfile({ navigation }) {
     ? reviews.filter((r) => r.course_id === selectedCourse)
     : reviews;
 
-  // Verificar si el profesor es favorito AL CARGAR
+  // Verificar si el profesor es favorito al cargar
   useEffect(() => {
     if (user?.id && professorId) {
       checkIfFavorite();
@@ -60,7 +60,12 @@ export default function ProfessorProfile({ navigation }) {
 
   const checkIfFavorite = async () => {
     try {
-      const favorite = await favoritesService.isFavorite(user.id, 'professor', null, professorId);
+      const favorite = await favoritesService.isFavorite(
+        user.id,
+        'professor',
+        null,
+        professorId
+      );
       setIsFavorite(!!favorite);
       setFavoriteId(favorite);
     } catch (error) {
@@ -82,13 +87,23 @@ export default function ProfessorProfile({ navigation }) {
         if (favoriteId) {
           await favoritesService.removeFavorite(favoriteId);
         } else {
-          await favoritesService.removeFavoriteByReference(user.id, 'professor', null, professorId);
+          await favoritesService.removeFavoriteByReference(
+            user.id,
+            'professor',
+            null,
+            professorId
+          );
         }
         setIsFavorite(false);
         setFavoriteId(null);
       } else {
         // Agregar a favoritos
-        const newFavorite = await favoritesService.addFavorite(user.id, 'professor', null, professorId);
+        const newFavorite = await favoritesService.addFavorite(
+          user.id,
+          'professor',
+          null,
+          professorId
+        );
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
       }
@@ -100,67 +115,52 @@ export default function ProfessorProfile({ navigation }) {
     }
   };
 
-  if (loading) {
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.utOrange} />
       </View>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <View style={styles.center}>
         <Text style={{ color: "red" }}>Error: {error}</Text>
       </View>
     );
-  }
-
-  if (!professor) {
+  if (!professor)
     return (
       <View style={styles.center}>
         <Text>Profesor no encontrado</Text>
       </View>
     );
-  }
 
   return (
     <View style={{ flex: 1 }}>
-      {/* SafeArea azul */}
       <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
       <BackHeader onBack={() => navigation.goBack()} />
       
-      {/* Header azul CON CORAZÓN */}
+      {/* Header azul con corazón */}
       <View style={{ backgroundColor: COLORS.resolutionBlue }}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Text style={styles.name}>{professor.full_name}</Text>
             <Text style={styles.subtitle}>{professor.department}</Text>
           </View>
-          
-          {/* BOTÓN CORAZÓN MINIMALISTA */}
           <TouchableOpacity 
             style={styles.heartButton}
             onPress={toggleFavorite}
             disabled={favoriteLoading}
           >
-            <Text style={[
-              styles.heartIcon,
-              isFavorite && styles.heartIconActive
-            ]}>
+            <Text style={[styles.heartIcon, isFavorite && styles.heartIconActive]}>
               {favoriteLoading ? '⋯' : (isFavorite ? '❤️' : '🤍')}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Contenedor blanco - TODO SE MANTIENE IGUAL */}
+      {/* Contenido */}
       <View style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
-        <ScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Promedios */}
+        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>⭐ Calificación</Text>
@@ -176,7 +176,6 @@ export default function ProfessorProfile({ navigation }) {
             </View>
           </View>
 
-          {/* Top tags */}
           {topTags && topTags.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Etiquetas más frecuentes</Text>
@@ -190,7 +189,6 @@ export default function ProfessorProfile({ navigation }) {
             </>
           )}
 
-          {/* Materias */}
           <Text style={styles.sectionTitle}>Materias</Text>
           <FlatList
             data={coursesTaught}
@@ -199,13 +197,11 @@ export default function ProfessorProfile({ navigation }) {
             showsHorizontalScrollIndicator={false}
             style={{ marginBottom: 20 }}
             renderItem={({ item }) => {
-              // Calculate avg score for this course
               const courseReviews = reviews.filter(r => r.course_id === item.id);
               const avgScore =
                 courseReviews.length > 0
                   ? (courseReviews.reduce((sum, r) => sum + (r.score || 0), 0) /
-                     courseReviews.length
-                    ).toFixed(2)
+                    courseReviews.length).toFixed(2)
                   : null;
 
               return (
@@ -225,7 +221,6 @@ export default function ProfessorProfile({ navigation }) {
             }}
           />
 
-          {/* Reseñas */}
           <Text style={styles.sectionTitle}>Reseñas</Text>
           {filteredReviews.length === 0 ? (
             <Text>No hay reseñas todavía.</Text>
@@ -235,15 +230,14 @@ export default function ProfessorProfile({ navigation }) {
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               renderItem={({ item }) => (
-                <View style={styles.reviewCard}>
-                  <Text style={styles.reviewCourse}>
-                    {item.course_name || "Materia desconocida"}
-                  </Text>
-                  <Text style={styles.reviewDate}>
-                    {new Date(item.created_at).toLocaleDateString("es-ES")}
-                  </Text>
+                <TouchableOpacity
+                  style={styles.reviewCard}
+                  onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
+                >
+                  <Text style={styles.reviewCourse}>{item.course_name || "Materia desconocida"}</Text>
+                  <Text style={styles.reviewDate}>{new Date(item.created_at).toLocaleDateString("es-ES")}</Text>
                   <Text>{item.comment || "Sin comentario"}</Text>
-                </View>
+                </TouchableOpacity>
               )}
             />
           )}
@@ -255,7 +249,8 @@ export default function ProfessorProfile({ navigation }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  // Nuevos estilos para el header con corazón
+
+  // Header
   header: { 
     paddingVertical: 60, 
     paddingHorizontal: 20, 
@@ -263,20 +258,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  titleContainer: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#FFF",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.8)",
-    textAlign: "center",
-  },
+  titleContainer: { flex: 1 },
+  name: { fontSize: 32, fontWeight: "bold", color: "#FFF", textAlign: "center" },
+  subtitle: { fontSize: 16, color: "rgba(255,255,255,0.8)", textAlign: "center" },
+
+  // Favoritos
   heartButton: {
     width: 44,
     height: 44,
@@ -286,59 +272,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 16,
   },
-  heartIcon: {
-    fontSize: 24,
-  },
-  heartIconActive: {
-    // El corazón rojo ya se muestra con el emoji '❤️'
-  },
-  // Todos tus estilos originales se mantienen igual
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: COLORS.columbiaBlue,
-    padding: 14,
-    borderRadius: 12,
-    marginRight: 12,
-    alignItems: "center",
-  },
-  statLabel: {
-    color: COLORS.resolutionBlue,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
+  heartIcon: { fontSize: 24 },
+  heartIconActive: {},
+
+  // Stats
+  statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
+  statCard: { flex: 1, backgroundColor: COLORS.columbiaBlue, padding: 14, borderRadius: 12, marginRight: 12, alignItems: "center" },
+  statLabel: { color: COLORS.resolutionBlue, fontWeight: "600", marginBottom: 4 },
   statValue: { fontSize: 18, color: COLORS.resolutionBlue, fontWeight: "bold" },
-  sectionTitle: {
-    marginBottom: 8,
-    fontSize: 18,
-    fontWeight: "700",
-    color: COLORS.yinmnBlue,
-  },
-  tag: {
-    backgroundColor: COLORS.utOrange,
-    padding: 8,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  reviewCard: {
-    backgroundColor: COLORS.columbiaBlue,
-    padding: 14,
-    marginVertical: 8,
-    borderRadius: 12,
-  },
-  tagText: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
-  reviewCourse: {
-    fontWeight: "600",
-    fontSize: 15,
-    color: COLORS.yinmnBlue,
-    marginBottom: 4,
-  },
+
+  // Secciones
+  sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: "700", color: COLORS.yinmnBlue },
+  tag: { backgroundColor: COLORS.utOrange, padding: 8, borderRadius: 12, marginRight: 8 },
+  tagText: { color: "#FFF", fontWeight: "bold" },
+
+  // Cards de reseña
+  reviewCard: { backgroundColor: COLORS.columbiaBlue, padding: 14, marginVertical: 8, borderRadius: 12 },
+  reviewCourse: { fontWeight: "600", fontSize: 15, color: COLORS.yinmnBlue, marginBottom: 4 },
   reviewDate: { fontSize: 12, color: COLORS.resolutionBlue, marginBottom: 6 },
 });
