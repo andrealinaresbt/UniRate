@@ -1,6 +1,7 @@
 // components/ReviewCard.js
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const COLORS = {
   border: '#E0E3E7',
@@ -10,6 +11,7 @@ const COLORS = {
 };
 
 export default function ReviewCard({ review, limited = false }) {
+  const navigation = useNavigation();
   const profName = review?.professors?.full_name || 'Profesor';
   const courseName = review?.courses?.name || 'Materia';
   const created = review?.created_at ? new Date(review.created_at).toLocaleDateString() : '';
@@ -18,8 +20,13 @@ export default function ReviewCard({ review, limited = false }) {
     ? '🔒 Inicia sesión para ver el comentario completo.'
     : (review?.comentario || '—');
 
+  const handlePress = () => {
+    if (!review?.id) return;
+    navigation.navigate('ReviewDetail', { reviewId: review.id });
+  };
+
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.85}>
       <Text style={styles.header}>{courseName}</Text>
       <Text style={styles.subheader}>{profName} • {created}</Text>
 
@@ -30,7 +37,7 @@ export default function ReviewCard({ review, limited = false }) {
       </View>
 
       <Text style={[styles.comment, limited && { color: COLORS.muted }]}>{comment}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
