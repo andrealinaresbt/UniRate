@@ -1,9 +1,15 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, Platform } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, Animated } from 'react-native';
 
-export const SearchResultItem = ({ item, onPress }) => (
-  <TouchableOpacity style={styles.card} onPress={onPress}>
-    {/* Contenido principal */}
+export const SearchResultItem = ({ 
+  item, 
+  onPress, 
+  showFavoriteButton, 
+  onFavoritePress, 
+  isFavorite, 
+  heartScale = 1 // Nueva prop para la animación
+}) => (
+  <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
     <View style={styles.content}>
       {/* Header con nombre y badge alineados */}
       <View style={styles.header}>
@@ -36,7 +42,7 @@ export const SearchResultItem = ({ item, onPress }) => (
         </View>
       </View>
 
-      {/* Rating y reviews en línea */}
+      {/* Rating, reviews y botón de favorito en línea */}
       <View style={styles.footer}>
         <View style={styles.ratingContainer}>
           <Text style={styles.ratingIcon}>⭐</Text>
@@ -47,11 +53,35 @@ export const SearchResultItem = ({ item, onPress }) => (
           </Text>
         </View>
 
+        {/* Espacio flexible para empujar el botón a la derecha */}
+        <View style={styles.spacer} />
+
         {/* Cantidad de reseñas */}
         {item.review_count !== undefined && item.review_count > 0 && (
           <Text style={styles.reviewCount}>
             {item.review_count} {item.review_count === 1 ? 'reseña' : 'reseñas'}
           </Text>
+        )}
+
+        {/* Botón de favorito con animación */}
+        {showFavoriteButton && (
+          <View style={[
+            styles.favoriteButton,
+            isFavorite ? styles.favoriteButtonActive : styles.favoriteButtonInactive,
+            { transform: [{ scale: heartScale }] } // Aplicar la animación aquí
+          ]}>
+            <TouchableOpacity 
+              onPress={(e) => {
+                e.stopPropagation();
+                onFavoritePress && onFavoritePress();
+              }}
+              style={styles.favoriteTouchable}
+            >
+              <Text style={styles.favoriteIcon}>
+                {isFavorite ? '❤️' : '🤍'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </View>
@@ -134,10 +164,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#003087',
   },
+  spacer: {
+    flex: 1,
+  },
   reviewCount: {
     fontSize: 14,
     color: '#888',
     fontStyle: 'italic',
+    marginRight: 12,
+  },
+  favoriteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  favoriteButtonActive: {
+    backgroundColor: '#FFE6E6',
+    borderColor: '#FF6B6B',
+  },
+  favoriteButtonInactive: {
+    backgroundColor: '#F8F9FA',
+    borderColor: '#E9ECEF',
+  },
+  favoriteTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteIcon: {
+    fontSize: 16,
   },
 });
 

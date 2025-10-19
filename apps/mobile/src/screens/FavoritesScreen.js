@@ -10,10 +10,14 @@ export default function FavoritesScreen({ navigation }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [favorites, setFavorites] = useState([]);
+  const [removingItems, setRemovingItems] = useState(new Set());
+  const [heartAnimations, setHeartAnimations] = useState({});
   const isFocused = useIsFocused();
 
   const loadFavorites = useCallback(async () => {
     setLoading(true);
+    setRemovingItems(new Set());
+    setHeartAnimations({});
     if (!user?.id) {
       setFavorites([]);
       setLoading(false);
@@ -59,32 +63,89 @@ export default function FavoritesScreen({ navigation }) {
     }
   };
 
+  const removeFromFavorites = async (favoriteItem) => {
+    if (!user || removingItems.has(favoriteItem.id)) return;
+    
+    try {
+      // 1. Marcar como en proceso de eliminación
+      setRemovingItems(prev => new Set(prev).add(favoriteItem.id));
+      
+      // 2. Animación de "shake" en el corazón (como Instagram)
+      // Primero: escalar a 1.3
+      setHeartAnimations(prev => ({
+        ...prev,
+        [favoriteItem.id]: 1.3
+      }));
+      
+      // Después de 100ms, volver a escala normal y eliminar
+      setTimeout(() => {
+        setHeartAnimations(prev => ({
+          ...prev,
+          [favoriteItem.id]: 1
+        }));
+        
+        // Eliminar de la base de datos después del feedback visual
+        setTimeout(() => {
+          favoritesService.removeFavorite(favoriteItem.id).catch(error => {
+            console.error('Error eliminando favorito:', error);
+            // Revertir en caso de error
+            setRemovingItems(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(favoriteItem.id);
+              return newSet;
+            });
+            setHeartAnimations(prev => {
+              const newState = { ...prev };
+              delete newState[favoriteItem.id];
+              return newState;
+            });
+          });
+        }, 50);
+        
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error eliminando favorito:', error);
+      setRemovingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(favoriteItem.id);
+        return newSet;
+      });
+      setHeartAnimations(prev => {
+        const newState = { ...prev };
+        delete newState[favoriteItem.id];
+        return newState;
+      });
+    }
+  };
+
   const formatFavoriteItem = (favorite) => {
     if (favorite.type === 'course' && favorite.courses) {
-        return {
+      return {
         id: favorite.id,
         full_name: favorite.courses.name,
         name: favorite.courses.name,
         code: favorite.courses.code,
         type: 'course',
-        avg_score: null, // Los cursos no tienen avg_score
-        review_count: null, // 
-        department: favorite.courses.department
-        };
+        avg_score: null,
+        review_count: null,
+        department: favorite.courses.department,
+        course_id: favorite.course_id
+      };
     } else if (favorite.type === 'professor' && favorite.professors) {
-        return {
+      return {
         id: favorite.id,
         full_name: favorite.professors.full_name,
         department: favorite.professors.department,
         type: 'professor',
         avg_score: favorite.professors.avg_score,
-        review_count: null, // Los profesores no tienen review_count en tabla
+        review_count: null,
         avg_difficulty: favorite.professors.avg_difficulty,
-        would_take_again_percentage: favorite.professors.would_take_again_percentage
-        };
+        professor_id: favorite.professor_id
+      };
     }
     return null;
-    };
+  };
 
   const validFavorites = favorites
     .map(formatFavoriteItem)
@@ -102,14 +163,29 @@ export default function FavoritesScreen({ navigation }) {
         <FlatList
           data={validFavorites}
           keyExtractor={(item) => `${item.type}-${item.id}`}
-          renderItem={({ item }) => (
-            <SearchResultItem 
-              item={item} 
-              onPress={() => handleItemPress(
-                favorites.find(f => f.id === item.id)
-              )} 
-            />
-          )}
+          renderItem={({ item }) => {
+            const isRemoving = removingItems.has(item.id);
+            const heartScale = heartAnimations[item.id] || 1;
+            
+            return (
+              <SearchResultItem 
+                item={item} 
+                onPress={() => {
+                  if (!isRemoving) {
+                    handleItemPress(favorites.find(f => f.id === item.id));
+                  }
+                }}
+                showFavoriteButton={true}
+                isFavorite={!isRemoving}
+                onFavoritePress={() => {
+                  if (!isRemoving) {
+                    removeFromFavorites(favorites.find(f => f.id === item.id));
+                  }
+                }}
+                heartScale={heartScale}
+              />
+            );
+          }}
           ListEmptyComponent={
             <Text style={styles.empty}>
               No tienes favoritos todavía.{'\n'}
