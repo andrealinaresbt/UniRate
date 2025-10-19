@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { getReviewById } from '../services/reviewService';
+import { EventBus } from '../utils/EventBus';
 import FancyReviewCard from '../components/FancyReviewCard';
 
 const COLORS = {
@@ -32,7 +33,19 @@ export default function ReviewDetailScreen() {
       if (!res.success) setState({ loading: false, error: res.error || 'Error cargando la reseña', review: null });
       else setState({ loading: false, error: null, review: res.data });
     })();
-    return () => { mounted = false; };
+    const off = EventBus.on('review:updated', ({ id } = {}) => {
+      if (!mounted) return;
+      if (id && id === reviewId) {
+        // reload
+        (async () => {
+          const r = await getReviewById(reviewId);
+          if (!mounted) return;
+          if (r.success) setState({ loading: false, error: null, review: r.data });
+        })();
+      }
+    });
+
+    return () => { mounted = false; off(); };
   }, [reviewId]);
 
   if (state.loading) {
