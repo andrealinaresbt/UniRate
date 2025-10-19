@@ -71,6 +71,9 @@ export default function NuevaResenaScreen() {
   const [openProfPicker, setOpenProfPicker] = useState(false);
   const [openCoursePicker, setOpenCoursePicker] = useState(false);
 
+  // Developer helper: when true, show a verification Alert after saving (defaults to false)
+  const VERIFY_SAVE = false;
+
   // cargar catálogos
   useEffect(() => {
     (async () => {
@@ -244,7 +247,12 @@ export default function NuevaResenaScreen() {
           const check = await getReviewById(editReview.id);
           if (check?.success && check.data) {
             const saved = check.data;
-            Alert.alert('Verificación', `Guardado: ${saved.comment ?? saved.comentario ?? '-'} (${saved.score ?? saved.calidad ?? '-'})`);
+            const message = `Guardado: ${saved.comment ?? saved.comentario ?? '-'} (${saved.score ?? saved.calidad ?? '-'})`;
+            if (VERIFY_SAVE) {
+              Alert.alert('Verificación', message);
+            } else {
+              console.log('[verify-save]', message, saved);
+            }
           }
         } catch (_) {}
       }
