@@ -16,6 +16,7 @@ import AdminScreen from './screens/AdminScreen';
 import CreateProfessorScreen from './screens/CreateProfessorScreen';
 import CreateCourseScreen from './screens/CreateCourseScreen';
 import ManageLinksScreen from './screens/ManageLinksScreen';
+import MyReviewsScreen from './screens/myReviews';
 
 import { AuthProvider } from './services/AuthContext';
 
@@ -70,6 +71,9 @@ export default function App() {
           <Stack.Screen name="Admin" component={AdminScreen} options={{ title: 'Panel Admin' }} />
           <Stack.Screen name="CreateProfessor" component={CreateProfessorScreen} options={{ title: 'Crear Profesor' }} />
           <Stack.Screen name="CreateCourse" component={CreateCourseScreen} options={{ title: 'Crear Materia' }} />
+
+          {/* Mis reseñas */}
+          <Stack.Screen name="myReviews" component={MyReviewsScreen} options={{ title: 'Mis reseñas' }} />
 
           {/* Vinculaciones */}
           <Stack.Screen name="ManageLinks" component={ManageLinksScreen} options={{ title: 'Vincular Materias ↔ Profesores' }} />
