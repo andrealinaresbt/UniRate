@@ -238,6 +238,7 @@ export const ReviewService = {
 export async function getReviews(filters = {}) {
   const {
     professor_id,
+    user_id,
     course_id,
     min_rating,
     min_difficulty,
@@ -258,6 +259,7 @@ export async function getReviews(filters = {}) {
     .range(offset, offset + limit - 1);
 
   if (professor_id) query = query.eq('professor_id', professor_id);
+  if (user_id) query = query.eq('user_id', user_id);
   if (course_id) query = query.eq('course_id', course_id);
   if (typeof min_rating === 'number') query = query.gte('calidad', min_rating);
   if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_difficulty);
