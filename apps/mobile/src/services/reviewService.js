@@ -254,15 +254,17 @@ export async function getReviews(filters = {}) {
       *,
       professors ( id, full_name ),
       courses ( id, name, code )
-    `, { count: 'exact' })
-    .order(orderBy, { ascending: order === 'asc' })
-    .range(offset, offset + limit - 1);
+    `, { count: 'exact' });
 
+  // apply filters first
   if (professor_id) query = query.eq('professor_id', professor_id);
   if (user_id) query = query.eq('user_id', user_id);
   if (course_id) query = query.eq('course_id', course_id);
   if (typeof min_rating === 'number') query = query.gte('calidad', min_rating);
   if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_difficulty);
+
+  // then apply ordering and pagination
+  query = query.order(orderBy, { ascending: order === 'asc' }).range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
   if (error) return { success: false, error: error.message };
