@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
 import ViewReviewScreen from './screens/ViewReviewScreen';
 import ReviewDetailScreen from './screens/ReviewDetailScreen';
@@ -18,6 +19,11 @@ import CreateCourseScreen from './screens/CreateCourseScreen';
 import ManageLinksScreen from './screens/ManageLinksScreen';
 import MyReviewsScreen from './screens/myReviews';
 
+import EditProfessorScreen from './screens/EditProfessorScreen';
+import EditCourseScreen from './screens/EditCourseScreen';
+import DeleteProfessorScreen from './screens/DeleteProfessorScreen';
+import DeleteCourseScreen from './screens/DeleteCourseScreen';
+
 import { AuthProvider } from './services/AuthContext';
 
 const Stack = createNativeStackNavigator();
@@ -29,54 +35,32 @@ export default function App() {
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
-            headerTitleAlign: 'center',
-            headerBackTitleVisible: false,
+            headerStyle: { backgroundColor: '#ffffff' },
+            headerTintColor: '#111827',
+            contentStyle: { backgroundColor: '#ffffff' }, // CLARO
           }}
         >
-          {/* Home */}
-          <Stack.Screen
-            name="Home"
-            component={HomeScreen}
-            options={{
-              title: 'UniRate',
-              headerStyle: {
-                backgroundColor: '#003087',
-                shadowColor: 'transparent', // iOS shadow
-                elevation: 0,               // Android shadow
-                borderBottomWidth: 0,       
-                paddingBottom:0
-              },
-              headerShown: false,
-              headerShadowVisible: false,  
-              headerTintColor: '#fff',
-            }}
-          />
+          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'UniRate' }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar sesión' }} />
+          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Crear cuenta' }} />
 
-          <Stack.Screen name="ReviewDetail" component={ReviewDetailScreen} options={{ title: 'Reseña' }}/>
-
-          {/* Login / Registro (mantengo alias por compatibilidad) */}
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="RegisterScreen" component={RegisterScreen} options={{ title: 'Registro', headerShown: false }} />
-          
-
-          {/* Reseñas */}
-          <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Publicar Reseña' }} />
+          <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Nueva reseña' }} />
           <Stack.Screen name="ViewReview" component={ViewReviewScreen} options={{ title: 'Reseñas' }} />
-          
-          {/* Perfiles */}
-          <Stack.Screen name="ProfessorProfile" component={ProfessorProfile} options={{ headerShown: false }} />
-          <Stack.Screen name="CourseProfile" component={CourseProfile} options={{ headerShown: false }} />
+          <Stack.Screen name="ReviewDetail" component={ReviewDetailScreen} options={{ title: 'Detalle de reseña' }} />
 
-          {/* Admin + creación */}
+          <Stack.Screen name="ProfessorProfile" component={ProfessorProfile} options={{ title: 'Profesor' }} />
+          <Stack.Screen name="CourseProfile" component={CourseProfile} options={{ title: 'Materia' }} />
+
           <Stack.Screen name="Admin" component={AdminScreen} options={{ title: 'Panel Admin' }} />
           <Stack.Screen name="CreateProfessor" component={CreateProfessorScreen} options={{ title: 'Crear Profesor' }} />
           <Stack.Screen name="CreateCourse" component={CreateCourseScreen} options={{ title: 'Crear Materia' }} />
-
-          {/* Mis reseñas */}
+          <Stack.Screen name="ManageLinks" component={ManageLinksScreen} options={{ title: 'Vincular Materias ↔ Profesores' }} />
           <Stack.Screen name="myReviews" component={MyReviewsScreen} options={{ title: 'Mis reseñas' }} />
 
-          {/* Vinculaciones */}
-          <Stack.Screen name="ManageLinks" component={ManageLinksScreen} options={{ title: 'Vincular Materias ↔ Profesores' }} />
+          <Stack.Screen name="EditProfessor" component={EditProfessorScreen} options={{ title: 'Modificar Profesor' }} />
+          <Stack.Screen name="EditCourse" component={EditCourseScreen} options={{ title: 'Modificar Materia' }} />
+          <Stack.Screen name="DeleteProfessor" component={DeleteProfessorScreen} options={{ title: 'Eliminar Profesor' }} />
+          <Stack.Screen name="DeleteCourse" component={DeleteCourseScreen} options={{ title: 'Eliminar Materia' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

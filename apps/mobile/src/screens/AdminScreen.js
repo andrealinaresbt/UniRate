@@ -1,89 +1,108 @@
 // apps/mobile/src/screens/AdminScreen.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../services/AuthContext';
 import { fetchIsAdmin } from '../services/AuthService';
 
-const Card = ({ emoji, title, subtitle, onPress }) => (
+const Tile = ({ emoji, title, subtitle, onPress, borderColor = '#1f6feb' }) => (
   <Pressable onPress={onPress} style={({ pressed }) => [
-    styles.card, pressed && { transform: [{ scale: 0.98 }], opacity: 0.95 }
+    styles.tile, { borderColor }, pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 }
   ]}>
-    <View style={styles.cardEmojiWrap}><Text style={styles.cardEmoji}>{emoji}</Text></View>
+    <Text style={styles.tileEmoji}>{emoji}</Text>
     <View style={{ flex: 1 }}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+      <Text style={styles.tileTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.tileSub}>{subtitle}</Text> : null}
     </View>
-    <Text style={styles.cardArrow}>›</Text>
+    <Text style={styles.tileArrow}>›</Text>
   </Pressable>
 );
 
 export default function AdminScreen({ navigation }) {
   const { user, loading } = useAuth();
-   const [isAdmin, setIsAdmin] = useState(false);
-useEffect(() => {
-   let alive = true;
-   if (user?.email) {
-     fetchIsAdmin(user.email)
-       .then(f => { if (alive) setIsAdmin(!!f); })
-       .catch(() => setIsAdmin(false));
-   } else {
-     setIsAdmin(false);
-   }
-   return () => { alive = false; };
- }, [user?.email]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checking, setChecking] = useState(true);
 
-  if (loading) return <View style={styles.center}><Text style={{ opacity: 0.6 }}>Cargando…</Text></View>;
-  if (!user || !isAdmin)
-    return <View style={styles.center}><Text>Acceso restringido. Solo administradores.</Text></View>;
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const ok = await fetchIsAdmin(user?.email || '');
+        if (alive) setIsAdmin(!!ok);
+      } finally { if (alive) setChecking(false); }
+    })();
+    return () => { alive = false; };
+  }, [user?.email]);
 
-  const name = user.full_name || user.name || user.email || 'Admin';
+  if (loading || checking) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator />
+        <Text style={styles.muted}>Verificando permisos…</Text>
+      </View>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.block}>Acceso restringido.</Text>
+        <Text style={styles.muted}>Solo administradores pueden gestionar profesores y materias.</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerHi}>Hola,</Text>
-        <Text style={styles.headerName}>{name}</Text>
-        <Text style={styles.headerSub}>Panel de administración</Text>
-      </View>
+    <ScrollView contentContainerStyle={{ padding: 16, backgroundColor: '#fff', flexGrow: 1 }}>
+      <Text style={styles.h1}>Panel de Administración</Text>
 
-      <Text style={styles.sectionTitle}>Gestión</Text>
-      <Card emoji="👨‍🏫" title="Crear Profesor" subtitle="Añade un nuevo profesor" onPress={() => navigation.navigate('CreateProfessor')} />
-      <Card emoji="📘"   title="Crear Materia"   subtitle="Registra una nueva asignatura" onPress={() => navigation.navigate('CreateCourse')} />
+      <Text style={styles.h2}>Profesores</Text>
+      <Tile emoji="🧑‍🏫" title="Crear Profesor" subtitle="Formulario con validaciones" onPress={() => navigation.navigate('CreateProfessor')} />
+      <Tile emoji="✏️" title="Modificar Profesor" subtitle="Precarga + validaciones" borderColor="#f59e0b" onPress={() => navigation.navigate('EditProfessor')} />
+      <Tile emoji="🗑️" title="Eliminar Profesor" subtitle="Borrado en cascada" borderColor="#dc2626" onPress={() => navigation.navigate('DeleteProfessor')} />
 
-      <Text style={styles.sectionTitle}>Relaciones</Text>
-      <Card
-        emoji="🔗"
-        title="Conectar / Desconectar"
-        subtitle="Vincula materias con profesores"
-        onPress={() => navigation.navigate('ManageLinks')}
-      />
+      <View style={{ height: 18 }} />
 
-      <Text style={styles.sectionTitle}>Utilidades</Text>
-      <Card emoji="📊" title="Reportes (pronto)" subtitle="Métricas y estadísticas" onPress={() => {}} />
-      <Card emoji="⚙️" title="Configuración (pronto)" subtitle="Permisos y políticas" onPress={() => {}} />
+      <Text style={styles.h2}>Materias</Text>
+      <Tile emoji="📚" title="Crear Materia" subtitle="Validaciones y guardado" onPress={() => navigation.navigate('CreateCourse')} />
+      <Tile emoji="✏️" title="Modificar Materia" subtitle="Precarga + código único" borderColor="#f59e0b" onPress={() => navigation.navigate('EditCourse')} />
+      <Tile emoji="🗑️" title="Eliminar Materia" subtitle="Borrado en cascada" borderColor="#dc2626" onPress={() => navigation.navigate('DeleteCourse')} />
+
+      <View style={{ height: 18 }} />
+
+      <Text style={styles.h2}>Vínculos</Text>
+      <Tile emoji="🔗" title="Vincular Materias ↔ Profesores" subtitle="Alta/Baja de relaciones" onPress={() => navigation.navigate('ManageLinks')} />
+
+      <View style={{ height: 18 }} />
+
+      <Text style={styles.h2}>Usuario</Text>
+      <Tile emoji="⭐" title="Mis reseñas" subtitle="Historial de tus reseñas" onPress={() => navigation.navigate('myReviews')} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingBottom: 28 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
-
-  header: { backgroundColor: '#0F172A', borderRadius: 16, padding: 18, marginBottom: 18 },
-  headerHi: { color: '#9CA3AF', fontSize: 14 },
-  headerName: { color: '#FFFFFF', fontSize: 22, fontWeight: '700', marginTop: 2 },
-  headerSub: { color: '#CBD5E1', marginTop: 6 },
-
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#475569', marginBottom: 10, marginTop: 6 },
-
-  card: {
-    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 12,
-    flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  h1: { color: '#111827', fontSize: 22, fontWeight: '800', marginBottom: 12 },
+  h2: { color: '#374151', fontSize: 16, fontWeight: '700', marginBottom: 8, marginTop: 12 },
+  tile: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
-  cardEmojiWrap: { backgroundColor: '#F1F5F9', width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  cardEmoji: { fontSize: 22 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  cardSubtitle: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  cardArrow: { fontSize: 28, color: '#94A3B8', marginLeft: 8 },
+  tileEmoji: { fontSize: 22, marginRight: 8 },
+  tileTitle: { color: '#111827', fontSize: 16, fontWeight: '700' },
+  tileSub: { color: '#6b7280', fontSize: 12 },
+  tileArrow: { color: '#9ca3af', fontSize: 28, marginLeft: 8 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16, backgroundColor: '#fff' },
+  block: { color: '#111827', fontSize: 18, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
+  muted: { color: '#6b7280', textAlign: 'center' },
 });

@@ -1,8 +1,10 @@
+// apps/mobile/src/services/professorService.js
 import { supabase } from './supabaseClient';
+import { requireSessionOrThrow } from './AuthService';
 
 export const ProfessorService = {
-  // Listado
-  getAllProfessors: async () => {
+  // ----- LISTADO / BÚSQUEDA / DETALLE -----
+  async getAllProfessors() {
     try {
       const { data, error } = await supabase
         .from('professors')
@@ -10,43 +12,50 @@ export const ProfessorService = {
         .order('full_name');
       if (error) throw error;
       return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 
-  // Búsqueda
-  searchProfessors: async (searchTerm) => {
+  async listAll(q = '') {
+    const term = (q ?? '').trim();
+    if (!term) return this.getAllProfessors();
+    return this.searchProfessors(term);
+  },
+
+  async searchProfessors(searchTerm) {
     try {
+      const q = (searchTerm ?? '').trim();
+      if (!q) return { success: true, data: [] };
       const { data, error } = await supabase
         .from('professors')
         .select('*')
-        .ilike('full_name', `%${searchTerm}%`)
-        .order('full_name');
+        .ilike('full_name', `%${q}%`)
+        .order('full_name')
+        .limit(25);
       if (error) throw error;
       return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 
-  // Detalle
-  getProfessorById: async (professorId) => {
+  async getProfessorById(id) {
     try {
       const { data, error } = await supabase
         .from('professors')
         .select('*')
-        .eq('id', professorId)
+        .eq('id', id)
         .single();
-    if (error) throw error;
+      if (error) throw error;
       return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 
-  // --- NUEVO: verificar duplicados (full_name + university) ---
-  checkDuplicate: async ({ full_name, university }) => {
+  // ----- REGLAS -----
+  async checkDuplicate({ full_name, university }) {
     try {
       const { data, error } = await supabase
         .from('professors')
@@ -56,78 +65,104 @@ export const ProfessorService = {
         .maybeSingle();
       if (error) throw error;
       return { success: true, exists: !!data, id: data?.id || null };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 
-  // --- NUEVO: auditoría simple ---
-  logAudit: async ({ action, entity, entity_id, details }) => {
+  async logAudit({ action, entity, entity_id, details }) {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('audit_logs')
         .insert({
           action,
           entity,
           entity_id,
-          details,           // JSON
+          details,
           performed_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
+        });
       if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      // la auditoría no debe romper el flujo
-      return { success: false, error: error.message };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 
-  // Crear profesor
-  createProfessor: async ({ full_name, department, university }) => {
+  // ----- CRUD -----
+  async createProfessor({ full_name, department, university }) {
     try {
-      // 1) pre-check de duplicado
-      const dup = await ProfessorService.checkDuplicate({ full_name, university });
+      await requireSessionOrThrow();
+
+      const dup = await this.checkDuplicate({ full_name, university });
       if (dup.success && dup.exists) {
         return { success: false, code: 'DUPLICATE', error: 'Profesor ya registrado' };
       }
 
-      // 2) insert
-      const insert = {
-        full_name,
-        department: department || null,
-        university: university || null,
-        avg_score: 0,
-        avg_difficulty: 0,
-        would_take_again_percentage: 0,
-      };
+      const insert = { full_name, department, university, avg_score: 0, avg_difficulty: 0, would_take_again_percentage: 0 };
 
       const { data, error } = await supabase
         .from('professors')
         .insert(insert)
-        .select('id, full_name, university')
+        .select('id')
         .single();
+      if (error) throw error;
 
-      // 3) si hay unique index y fue duplicado por carrera, capturamos 23505
-      if (error) {
-        // @ts-ignore (SupabaseError tiene code)
-        if (error.code === '23505') {
-          return { success: false, code: 'DUPLICATE', error: 'Profesor ya registrado' };
+      await this.logAudit({ action: 'CREATE', entity: 'professor', entity_id: data.id, details: insert });
+      return { success: true, data };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  async updateProfessor(id, payload) {
+    try {
+      await requireSessionOrThrow();
+
+      if (!payload?.full_name?.trim()) return { success: false, error: 'El nombre completo es requerido' };
+
+      const current = await this.getProfessorById(id);
+      if (current.success) {
+        const candidate = { full_name: payload.full_name ?? current.data.full_name, university: payload.university ?? current.data.university };
+        const dup = await this.checkDuplicate(candidate);
+        if (dup.success && dup.exists && String(dup.id) !== String(id)) {
+          return { success: false, code: 'DUPLICATE', error: 'Ya existe un profesor con ese nombre y universidad' };
         }
-        throw error;
       }
 
-      // 4) auditoría (best-effort)
-      await ProfessorService.logAudit({
-        action: 'CREATE',
-        entity: 'professor',
-        entity_id: data.id,
-        details: { full_name, department, university },
-      });
+      const { data, error } = await supabase
+        .from('professors')
+        .update({ full_name: payload.full_name, department: payload.department, university: payload.university })
+        .eq('id', id)
+        .select('id');
+      if (error) throw error;
 
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message || String(error) };
+      if (!data || data.length === 0) return { success: false, error: 'No se aplicaron cambios (RLS/filtro).' };
+
+      await this.logAudit({ action: 'UPDATE', entity: 'professor', entity_id: id, details: payload });
+      return { success: true, data: { id } };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  async deleteProfessorCascade(id) {
+    try {
+      await requireSessionOrThrow();
+
+      const links = await supabase.from('professor_courses').delete().eq('professor_id', id).select('id');
+      if (links.error) throw links.error;
+
+      const reviews = await supabase.from('reviews').delete().eq('professor_id', id).select('id');
+      if (reviews.error) throw reviews.error;
+
+      const prof = await supabase.from('professors').delete().eq('id', id).select('id');
+      if (prof.error) throw prof.error;
+      if (!prof.data || prof.data.length === 0) return { success: false, error: 'No se eliminó el registro (RLS/filtro).' };
+
+      await this.logAudit({ action: 'DELETE', entity: 'professor', entity_id: id, details: { cascade: true } });
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   },
 };
