@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Keyboard,
-  Animated,
-  Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/DarkHeader';
@@ -24,8 +22,7 @@ import { useSearch } from '../hooks/useSearch';
 import { useAuth } from '../services/AuthContext';
 import { fetchIsAdmin } from '../services/AuthService';
 import { ErrorPopup } from '../components/NetErrorPopup';
-
-const { height: screenHeight } = Dimensions.get('window');
+import FloatingReviewButton from '../components/FloatingReviewButton';
 
 export default function HomeScreen({ navigation }) {
   const { user, loading: authContextLoading } = useAuth();
@@ -51,10 +48,8 @@ export default function HomeScreen({ navigation }) {
         .then(f => { if (alive) setIsAdmin(!!f); })
         .catch(() => setIsAdmin(false));
     } else {
-
       if (alive) setIsAdmin(false);
     }
-    
     return () => { alive = false; };
   }, [user?.email]);
 
@@ -91,38 +86,6 @@ export default function HomeScreen({ navigation }) {
 
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   useEffect(() => { if (error) setShowErrorPopup(true); }, [error]);
-
-  // ===== Tooltip =====
-  const [tooltipVisible, setTooltipVisible] = useState(false);
-  const tooltipOpacity = useRef(new Animated.Value(0)).current;
-  const tooltipTimerRef = useRef(null);
-
-  const showTooltip = () => {
-    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
-    setTooltipVisible(true);
-    Animated.timing(tooltipOpacity, {
-      toValue: 1,
-      duration: 160,
-      useNativeDriver: true,
-    }).start();
-    tooltipTimerRef.current = setTimeout(hideTooltip, 1600);
-  };
-
-  const hideTooltip = () => {
-    if (tooltipTimerRef.current) {
-      clearTimeout(tooltipTimerRef.current);
-      tooltipTimerRef.current = null;
-    }
-    Animated.timing(tooltipOpacity, {
-      toValue: 0,
-      duration: 160,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) setTooltipVisible(false);
-    });
-  };
-
-  // ==============================
 
   return (
     <KeyboardAvoidingView 
@@ -219,38 +182,10 @@ export default function HomeScreen({ navigation }) {
         )}
       </SafeAreaView>
 
-      {/* FAB + Tooltip */}
-      {user && !keyboardVisible && !showResults &&  (
-  <>
-        {tooltipVisible && (
-          <Animated.View
-            style={[
-              styles.tooltipContainer,
-              {
-                opacity: tooltipOpacity,
-                transform: [{ translateY: -10 }],
-              },
-            ]}
-            pointerEvents="none"
-          >
-            <View style={styles.tooltipBubble}>
-              <Text style={styles.tooltipText}>Crear reseña</Text>
-              <View style={styles.tooltipArrow} />
-            </View>
-          </Animated.View>
-        )}
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={styles.fab}
-          onPress={() => navigation.navigate('NuevaResena')}
-          onLongPress={showTooltip}
-          onPressOut={hideTooltip}
-        >
-          <Text style={styles.fabIcon}>＋</Text>
-        </TouchableOpacity>
-      </>
-    )}
+      {/* FAB con tooltip (gestión interna en el componente) */}
+      {user && !keyboardVisible && !showResults && (
+        <FloatingReviewButton onPress={() => navigation.navigate('NuevaResena')} />
+      )}
 
       <ErrorPopup
         visible={showErrorPopup}
@@ -265,12 +200,12 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// Tus estilos se mantienen exactamente igual...
+// Estilos
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#003087', paddingTop: 10,},
   safeAreaTop: { backgroundColor: '#003087' , marginTop: 0,},
   topSafeAreaContent: {
-  backgroundColor: '#003087',
+    backgroundColor: '#003087',
   },
   safeAreaContent: { flex: 1, backgroundColor: '#FFFFFF' },
   topSection: { backgroundColor: '#003087', paddingHorizontal: 20, paddingTop: 10, paddingBottom: 25 },
@@ -326,55 +261,4 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: '#888', textAlign: 'center' },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: screenHeight * 0.05, 
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FF8C42',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-    zIndex: 10,
-  },
-  fabIcon: {
-    color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '700',
-    lineHeight: 34,
-  },
-
-  tooltipContainer: {
-    position: 'absolute',
-    right: 30,
-    bottom: screenHeight * 0.13,
-    alignItems: 'center',
-    zIndex: 15,
-  },
-  tooltipBubble: {
-    backgroundColor: '#FF8C42',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  tooltipArrow: {
-    width: 12,
-    height: 12,
-    backgroundColor: '#FF8C42',
-    transform: [{ rotate: '45deg' }],
-    marginTop: -6,
-  },
-  tooltipText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
 });
