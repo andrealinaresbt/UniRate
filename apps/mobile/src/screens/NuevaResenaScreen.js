@@ -13,11 +13,12 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ProfessorService } from '../services/professorService';
 import { ReviewService } from '../services/reviewService';
+import { EventBus } from '../utils/EventBus';
 
 const TAGS = [
   'Exigente',
@@ -43,6 +44,8 @@ const COLORS = {
 
 export default function NuevaResenaScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const editReview = route.params?.editReview;
 
   // catálogos
   const [profesores, setProfesores] = useState([]);
@@ -85,6 +88,22 @@ export default function NuevaResenaScreen() {
       }
     })();
   }, []);
+
+  // si venimos en modo edición, prefilar campos
+  useEffect(() => {
+    if (!editReview) return;
+    try {
+      setProfesorId(editReview.professor_id || editReview.professor_id);
+      setMateriaId(editReview.course_id || editReview.course_id);
+      setAsistencia(!!editReview.asistencia);
+      setUsoTexto(!!editReview.uso_texto || !!editReview.usoTexto);
+      setCalidad(String(editReview.calidad ?? editReview.score ?? ''));
+      setDificultad(String(editReview.dificultad ?? editReview.difficulty ?? ''));
+      setVolveria(!!editReview.volveria || !!editReview.would_take_again);
+      setComentario(editReview.comentario ?? editReview.comment ?? '');
+      setEtiquetas(Array.isArray(editReview.etiquetas) ? editReview.etiquetas : (editReview.tags || []));
+    } catch (_) {}
+  }, [editReview]);
 
   // Cargar borrador guardado (si lo hay)
   useEffect(() => {
@@ -180,13 +199,22 @@ export default function NuevaResenaScreen() {
       etiquetas, // text[] en Supabase
     };
 
-    const res = await ReviewService.createReview(payload);
+    let res;
+    if (editReview?.id) {
+      // update
+      res = await ReviewService.updateReview(editReview.id, payload);
+    } else {
+      res = await ReviewService.createReview(payload);
+    }
     setSubmitting(false);
 
     if (res.success) {
       setStatus('exito');
       await AsyncStorage.removeItem('draft_review');
       Alert.alert('¡Listo!', 'Reseña publicada con éxito.');
+      // emit event so lists can refresh
+      if (editReview?.id) EventBus.emit('review:updated', { id: editReview.id });
+      else EventBus.emit('review:created');
       navigation.goBack();
     } else {
       setStatus('error');
