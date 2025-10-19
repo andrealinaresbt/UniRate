@@ -67,11 +67,8 @@ export default function FavoritesScreen({ navigation }) {
     if (!user || removingItems.has(favoriteItem.id)) return;
     
     try {
-      // 1. Marcar como en proceso de eliminación
       setRemovingItems(prev => new Set(prev).add(favoriteItem.id));
       
-      // 2. Animación de "shake" en el corazón (como Instagram)
-      // Primero: escalar a 1.3
       setHeartAnimations(prev => ({
         ...prev,
         [favoriteItem.id]: 1.3

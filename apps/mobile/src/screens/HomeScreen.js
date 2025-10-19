@@ -130,9 +130,9 @@ export default function HomeScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar
-          barStyle="light-content"
-          backgroundColor="#003087"
-          translucent={false}
+        barStyle="light-content"
+        backgroundColor="transparent" 
+        translucent={true}
       />
       <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
         <View style={styles.topSafeAreaContent}>
@@ -265,7 +265,6 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// Tus estilos se mantienen exactamente igual...
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#003087', paddingTop: 10,},
   safeAreaTop: { backgroundColor: '#003087' , marginTop: 0,},

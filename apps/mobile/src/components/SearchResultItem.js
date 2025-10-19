@@ -7,7 +7,7 @@ export const SearchResultItem = ({
   showFavoriteButton, 
   onFavoritePress, 
   isFavorite, 
-  heartScale = 1 // Nueva prop para la animación
+  heartScale = 1
 }) => (
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
     <View style={styles.content}>
@@ -53,7 +53,6 @@ export const SearchResultItem = ({
           </Text>
         </View>
 
-        {/* Espacio flexible para empujar el botón a la derecha */}
         <View style={styles.spacer} />
 
         {/* Cantidad de reseñas */}
@@ -68,7 +67,7 @@ export const SearchResultItem = ({
           <View style={[
             styles.favoriteButton,
             isFavorite ? styles.favoriteButtonActive : styles.favoriteButtonInactive,
-            { transform: [{ scale: heartScale }] } // Aplicar la animación aquí
+            { transform: [{ scale: heartScale }] } 
           ]}>
             <TouchableOpacity 
               onPress={(e) => {

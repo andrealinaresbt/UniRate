@@ -38,10 +38,25 @@ export default function App() {
           screenOptions={{
             headerStyle: { backgroundColor: '#ffffff' },
             headerTintColor: '#111827',
-            contentStyle: { backgroundColor: '#ffffff' }, // CLARO
+            contentStyle: { backgroundColor: '#ffffff' },
+            statusBarStyle: 'dark',
+            statusBarColor: '#ffffff', 
+            statusBarTranslucent: false,
           }}
         >
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'UniRate' }} />
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen} 
+            options={{ 
+              title: 'UniRate', 
+              headerShown: false,
+              // status bar claro
+              statusBarStyle: 'light',
+              statusBarColor: 'transparent', 
+              statusBarTranslucent: true,
+            }} 
+          />
+
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar sesión' }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Crear cuenta' }} />
 

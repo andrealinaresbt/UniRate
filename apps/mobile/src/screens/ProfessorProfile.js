@@ -16,8 +16,10 @@ import { EventBus } from '../utils/EventBus';
 import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../services/AuthContext';
 import { favoritesService } from '../services/favoritesService';
+import { filterService } from '../services/filterService';
 import SearchResultItem from "../components/SearchResultItem";
 import BackHeader from "../components/BackHeader";
+import FilterModal from "../components/FilterModal";
 
 const COLORS = {
   seasalt: "#F6F7F8",
@@ -51,10 +53,12 @@ export default function ProfessorProfile({ navigation }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-
-  const filteredReviews = selectedCourse
-    ? reviews.filter((r) => r.course_id === selectedCourse)
-    : reviews;
+  
+  // Estados para filtros
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filters, setFilters] = useState({});
+  const [filteredReviews, setFilteredReviews] = useState([]);
+  const [appliedFilters, setAppliedFilters] = useState({});
 
   // Verificar si el profesor es favorito al cargar
   useEffect(() => {
@@ -70,6 +74,11 @@ export default function ProfessorProfile({ navigation }) {
     if (isFocused) refetch();
     return () => { offU(); offD(); };
   }, [professorId, isFocused]);
+
+  // Aplicar filtros cuando cambian
+  useEffect(() => {
+    applyFilters();
+  }, [reviews, filters, selectedCourse]);
 
   const checkIfFavorite = async () => {
     try {
@@ -128,6 +137,129 @@ export default function ProfessorProfile({ navigation }) {
     }
   };
 
+  const applyFilters = async () => {
+    console.log('Aplicando filtros:', filters);
+    
+    // Si filters está vacío, limpiar todo
+    if (!filters || Object.keys(filters).length === 0) {
+      console.log('No hay filtros, mostrando todas las reseñas');
+      const finalReviews = selectedCourse
+        ? reviews.filter((r) => r.course_id === selectedCourse)
+        : reviews;
+      setFilteredReviews(finalReviews);
+      setAppliedFilters({});
+      return;
+    }
+    
+    // Limpiar filtros - eliminar propiedades con valores null/undefined o por defecto
+    const cleanFilters = {};
+    Object.keys(filters).forEach(key => {
+      const value = filters[key];
+      
+      // Solo incluir filtros que tienen valores válidos y no son los valores por defecto
+      if (value !== null && value !== undefined && value !== '') {
+        if (key === 'minRating' && value === 1) {
+          // No incluir minRating si es 1 (valor por defecto)
+          return;
+        }
+        if (key === 'maxRating' && value === 5) {
+          // No incluir maxRating si es 5 (valor por defecto)
+          return;
+        }
+        if (key === 'minDifficulty' && value === 1) {
+          // No incluir minDifficulty si es 1 (valor por defecto)
+          return;
+        }
+        if (key === 'maxDifficulty' && value === 5) {
+          // No incluir maxDifficulty si es 5 (valor por defecto)
+          return;
+        }
+        if (key === 'sortBy' && value === 'newest') {
+          // No incluir sortBy si es el valor por defecto
+          return;
+        }
+        cleanFilters[key] = value;
+      }
+    });
+
+    console.log('Filtros limpios:', cleanFilters);
+
+    // Si no hay filtros activos después de limpiar
+    if (Object.keys(cleanFilters).length === 0) {
+      console.log('No hay filtros activos, mostrando todas las reseñas');
+      const finalReviews = selectedCourse
+        ? reviews.filter((r) => r.course_id === selectedCourse)
+        : reviews;
+      setFilteredReviews(finalReviews);
+      setAppliedFilters({});
+      return;
+    }
+
+    try {
+      console.log('Llamando a filterService con:', cleanFilters);
+      const filtered = await filterService.getFilteredReviews(cleanFilters, {
+        professorId: professorId
+      });
+      
+      console.log('Resultados filtrados:', filtered);
+      setFilteredReviews(filtered);
+      setAppliedFilters(cleanFilters);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      // En caso de error, mostrar reseñas base
+      const finalReviews = selectedCourse
+        ? reviews.filter((r) => r.course_id === selectedCourse)
+        : reviews;
+      setFilteredReviews(finalReviews);
+    }
+  };
+
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters);
+    setFilterModalVisible(false);
+  };
+
+  const handleClearFilters = () => {
+    // Limpiar completamente todos los estados de filtros
+    setFilters({});
+    setAppliedFilters({});
+    setFilteredReviews([]); // También limpiar filteredReviews
+    setFilterModalVisible(false);
+    
+    // Forzar un refresh para mostrar todas las reseñas
+    const finalReviews = selectedCourse
+      ? reviews.filter((r) => r.course_id === selectedCourse)
+      : reviews;
+    setFilteredReviews(finalReviews);
+  };
+
+  const getActiveFiltersCount = () => {
+    // Verificación segura - si appliedFilters es null/undefined o vacío
+    if (!appliedFilters || Object.keys(appliedFilters).length === 0) {
+      return 0;
+    }
+    
+    let count = 0;
+    if (appliedFilters.courseId) count++;
+    if (appliedFilters.professorId) count++;
+    if (appliedFilters.minRating > 1 || appliedFilters.maxRating < 5) count++;
+    if (appliedFilters.minDifficulty > 1 || appliedFilters.maxDifficulty < 5) count++;
+    if (appliedFilters.sortBy && appliedFilters.sortBy !== 'newest') count++;
+    return count;
+  };
+
+  const getDisplayReviews = () => {
+    // Si hay appliedFilters activos, usar filteredReviews
+    if (appliedFilters && Object.keys(appliedFilters).length > 0) {
+      return filteredReviews;
+    }
+    
+    // Si no hay filtros, mostrar según selección de curso
+    return selectedCourse
+      ? reviews.filter((r) => r.course_id === selectedCourse)
+      : reviews;
+  };
+
   if (loading)
     return (
       <View style={styles.center}>
@@ -146,6 +278,8 @@ export default function ProfessorProfile({ navigation }) {
         <Text>Profesor no encontrado</Text>
       </View>
     );
+
+  const displayReviews = getDisplayReviews();
 
   return (
     <View style={{ flex: 1 }}>
@@ -234,28 +368,74 @@ export default function ProfessorProfile({ navigation }) {
             }}
           />
 
-          <Text style={styles.sectionTitle}>Reseñas</Text>
-          {filteredReviews.length === 0 ? (
-            <Text>No hay reseñas todavía.</Text>
+          {/* Sección de Reseñas con Botón de Filtros */}
+          <View style={styles.reviewsHeader}>
+            <Text style={styles.sectionTitle}>Reseñas</Text>
+            <TouchableOpacity 
+              style={styles.filterButton}
+              onPress={() => setFilterModalVisible(true)}
+            >
+              <Text style={styles.filterButtonText}>
+                🎯 {getActiveFiltersCount() > 0 ? `(${getActiveFiltersCount()})` : ''}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Mostrar filtros activos */}
+          {getActiveFiltersCount() > 0 && (
+            <View style={styles.activeFilters}>
+              <Text style={styles.activeFiltersText}>
+                Filtros aplicados: {getActiveFiltersCount()}
+              </Text>
+              <TouchableOpacity onPress={handleClearFilters}>
+                <Text style={styles.clearFiltersText}>Limpiar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {displayReviews.length === 0 ? (
+            <View style={styles.noResults}>
+              <Text style={styles.noResultsText}>No se encontraron reseñas</Text>
+              {getActiveFiltersCount() > 0 && (
+                <Text style={styles.noResultsSubtext}>
+                  Intenta con otros filtros
+                </Text>
+              )}
+            </View>
           ) : (
             <FlatList
-              data={filteredReviews}
+              data={displayReviews}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
               renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.reviewCard}
-                  onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
-                >
-                  <Text style={styles.reviewCourse}>{item.course_name || "Materia desconocida"}</Text>
-                  <Text style={styles.reviewDate}>{new Date(item.created_at).toLocaleDateString("es-ES")}</Text>
-                  <Text>{item.comment || "Sin comentario"}</Text>
-                </TouchableOpacity>
-              )}
-            />
+              <TouchableOpacity
+                style={styles.reviewCard}
+                onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
+              >
+                <Text style={styles.reviewCourse}>
+                  {item.courses?.name || item.course_name || "Materia desconocida"}
+                </Text>
+                <Text style={styles.reviewDate}>
+                  {new Date(item.created_at).toLocaleDateString("es-ES")}
+                </Text>
+                <Text style={styles.reviewStats}>
+                  ⭐ {item.score} | 📉 {item.difficulty}/5
+                </Text>
+                <Text style={styles.reviewComment}>{item.comment || "Sin comentario"}</Text>
+              </TouchableOpacity>
+            )}/>
           )}
         </ScrollView>
       </View>
+
+      {/* Modal de Filtros */}
+      <FilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        onApplyFilters={handleApplyFilters}
+        context={{ professorId }}
+        currentFilters={filters}
+      />
     </View>
   );
 }
@@ -295,12 +475,95 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, color: COLORS.resolutionBlue, fontWeight: "bold" },
 
   // Secciones
-  sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: "700", color: COLORS.yinmnBlue },
+  sectionTitle: { fontSize: 18, fontWeight: "700", color: COLORS.yinmnBlue },
   tag: { backgroundColor: COLORS.utOrange, padding: 8, borderRadius: 12, marginRight: 8 },
   tagText: { color: "#FFF", fontWeight: "bold" },
 
+  // Header de Reseñas con Filtros
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filterButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.yinmnBlue,
+  },
+  filterButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.yinmnBlue,
+  },
+
+  // Filtros activos
+  activeFilters: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.columbiaBlue,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  activeFiltersText: {
+    fontSize: 14,
+    color: COLORS.resolutionBlue,
+    fontWeight: '500',
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    color: COLORS.utOrange,
+    fontWeight: '600',
+  },
+
   // Cards de reseña
-  reviewCard: { backgroundColor: COLORS.columbiaBlue, padding: 14, marginVertical: 8, borderRadius: 12 },
-  reviewCourse: { fontWeight: "600", fontSize: 15, color: COLORS.yinmnBlue, marginBottom: 4 },
-  reviewDate: { fontSize: 12, color: COLORS.resolutionBlue, marginBottom: 6 },
+  reviewCard: { 
+    backgroundColor: COLORS.columbiaBlue, 
+    padding: 14, 
+    marginVertical: 8, 
+    borderRadius: 12 
+  },
+  reviewCourse: { 
+    fontWeight: "600", 
+    fontSize: 15, 
+    color: COLORS.yinmnBlue, 
+    marginBottom: 4 
+  },
+  reviewDate: { 
+    fontSize: 12, 
+    color: COLORS.resolutionBlue, 
+    marginBottom: 6 
+  },
+  reviewStats: {
+    fontSize: 12,
+    color: COLORS.resolutionBlue,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  reviewComment: { 
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
+  },
+
+  // Sin resultados
+  noResults: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  noResultsSubtext: {
+    fontSize: 14,
+    color: '#888',
+  },
 });
