@@ -48,11 +48,14 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
             </>
           ) : (
             <>
-              <MenuItem text="Mi Perfil" onPress={() => {
+              <MenuItem text="Mis reseñas" onPress={() => {
                   onClose();
                   navigation.navigate('myReviews');
                 }} />
-              <MenuItem text="Ver Materias" onPress={onClose} />
+              <MenuItem text="Favoritos" onPress={() => {
+                  onClose();
+                  navigation.navigate('Favorites');
+                }} />
 
               
               <MenuItem

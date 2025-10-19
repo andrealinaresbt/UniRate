@@ -23,6 +23,7 @@ import EditProfessorScreen from './screens/EditProfessorScreen';
 import EditCourseScreen from './screens/EditCourseScreen';
 import DeleteProfessorScreen from './screens/DeleteProfessorScreen';
 import DeleteCourseScreen from './screens/DeleteCourseScreen';
+import FavoritesScreen from './screens/FavoritesScreen'
 
 import { AuthProvider } from './services/AuthContext';
 
@@ -61,6 +62,7 @@ export default function App() {
           <Stack.Screen name="EditCourse" component={EditCourseScreen} options={{ title: 'Modificar Materia' }} />
           <Stack.Screen name="DeleteProfessor" component={DeleteProfessorScreen} options={{ title: 'Eliminar Profesor' }} />
           <Stack.Screen name="DeleteCourse" component={DeleteCourseScreen} options={{ title: 'Eliminar Materia' }} />
+          <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoritos' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthProvider>

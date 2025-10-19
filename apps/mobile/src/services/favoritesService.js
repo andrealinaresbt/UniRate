@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { EventBus } from '../utils/EventBus'; // Asegúrate de importar EventBus
 
 export const favoritesService = {
   // Agregar a favoritos
@@ -17,6 +18,9 @@ export const favoritesService = {
       .single();
 
     if (error) throw error;
+    
+    // EMITIR EVENTO - NUEVO
+    EventBus.emit('favorite:added', data);
     return data;
   },
 
@@ -28,6 +32,9 @@ export const favoritesService = {
       .eq('id', favoriteId);
 
     if (error) throw error;
+    
+    // EMITIR EVENTO - NUEVO
+    EventBus.emit('favorite:removed', { id: favoriteId });
   },
 
   // Eliminar por referencia (más seguro)
@@ -47,6 +54,14 @@ export const favoritesService = {
 
     const { error } = await query;
     if (error) throw error;
+    
+    // EMITIR EVENTO - NUEVO
+    EventBus.emit('favorite:removed', { 
+      user_id: userId, 
+      type: type, 
+      course_id: courseId, 
+      professor_id: professorId 
+    });
   },
 
   // Verificar si es favorito
@@ -69,25 +84,24 @@ export const favoritesService = {
     return data.length > 0 ? data[0].id : null;
   },
 
-  // Obtener todos los favoritos de un usuario
-  async getUserFavorites(userId) {
-    const { data, error } = await supabase
-      .from('favorites')
-      .select(`
-        id,
-        type,
-        course_id,
-        professor_id,
-        created_at,
-        courses (id, name, code),
-        professors (id, full_name, department)
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+ async getUserFavorites(userId) {
+  const { data, error } = await supabase
+    .from('favorites')
+    .select(`
+      id,
+      type,
+      course_id,
+      professor_id,
+      created_at,
+      courses (id, name, code, department),
+      professors (id, full_name, department, avg_score, avg_difficulty, would_take_again_percentage)
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data;
-  },
+  if (error) throw error;
+  return data;
+},
 
   // Obtener solo cursos favoritos
   async getUserFavoriteCourses(userId) {
