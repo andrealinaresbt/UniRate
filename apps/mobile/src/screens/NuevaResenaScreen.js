@@ -13,11 +13,12 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ProfessorService } from '../services/professorService';
-import { ReviewService } from '../services/reviewService';
+import { ReviewService, updateReview, getReviewById } from '../services/reviewService';
+import { EventBus } from '../utils/EventBus';
 
 const TAGS = [
   'Exigente',
@@ -43,6 +44,8 @@ const COLORS = {
 
 export default function NuevaResenaScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const editReview = route.params?.editReview;
 
   // catálogos
   const [profesores, setProfesores] = useState([]);
@@ -86,8 +89,26 @@ export default function NuevaResenaScreen() {
     })();
   }, []);
 
+  // si venimos en modo edición, prefilar campos
+  useEffect(() => {
+    if (!editReview) return;
+    try {
+      setProfesorId(editReview.professor_id || editReview.professor_id);
+      setMateriaId(editReview.course_id || editReview.course_id);
+      setAsistencia(!!editReview.asistencia);
+      setUsoTexto(!!editReview.uso_texto || !!editReview.usoTexto);
+      setCalidad(String(editReview.calidad ?? editReview.score ?? ''));
+      setDificultad(String(editReview.dificultad ?? editReview.difficulty ?? ''));
+      setVolveria(!!editReview.volveria || !!editReview.would_take_again);
+      setComentario(editReview.comentario ?? editReview.comment ?? '');
+      setEtiquetas(Array.isArray(editReview.etiquetas) ? editReview.etiquetas : (editReview.tags || []));
+    } catch (_) {}
+  }, [editReview]);
+
   // Cargar borrador guardado (si lo hay)
   useEffect(() => {
+    // If we're editing an existing review, don't load a saved draft (it may overwrite edit fields)
+    if (editReview) return;
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('draft_review');
@@ -109,6 +130,8 @@ export default function NuevaResenaScreen() {
 
   // Autosave borrador
   useEffect(() => {
+    // Don't autosave when editing an existing review — editing should not overwrite the global draft
+    if (editReview) return;
     const payload = {
       profesorId,
       materiaId,
@@ -178,23 +201,57 @@ export default function NuevaResenaScreen() {
       volveria,
       comentario,
       etiquetas, // text[] en Supabase
+      // duplicate english fields used by some screens/schemas to keep both views consistent
+      score: parseInt(calidad, 10),
+  // teacher-specific score column used by professor pages
+  score_teacher: parseInt(calidad, 10),
+      difficulty: parseInt(dificultad, 10),
+      comment: comentario,
+      would_take_again: volveria,
     };
 
-    const res = await ReviewService.createReview(payload);
-    setSubmitting(false);
+    // helper: avoid hanging indefinitely if network/Supabase stalls
+    const withTimeout = (p, ms = 15000) =>
+      Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+      ]);
 
-    if (res.success) {
+    let res;
+    try {
+      if (editReview?.id) {
+        // update (use named updateReview export)
+        res = await withTimeout(updateReview(editReview.id, payload), 15000);
+      } else {
+        res = await withTimeout(ReviewService.createReview(payload), 15000);
+      }
+    } catch (e) {
+      res = { success: false, error: e?.message || String(e) };
+    } finally {
+      setSubmitting(false);
+    }
+
+    if (res && res.success) {
       setStatus('exito');
       await AsyncStorage.removeItem('draft_review');
       Alert.alert('¡Listo!', 'Reseña publicada con éxito.');
+      // emit event so lists can refresh
+      if (editReview?.id) EventBus.emit('review:updated', { id: editReview.id });
+      else EventBus.emit('review:created');
+      // Verify saved record (helpful for debugging RLS or payload mismatches)
+      if (editReview?.id) {
+        try {
+          const check = await getReviewById(editReview.id);
+          if (check?.success && check.data) {
+            const saved = check.data;
+            Alert.alert('Verificación', `Guardado: ${saved.comment ?? saved.comentario ?? '-'} (${saved.score ?? saved.calidad ?? '-'})`);
+          }
+        } catch (_) {}
+      }
       navigation.goBack();
     } else {
       setStatus('error');
-      Alert.alert(
-        'Error',
-        res.error ||
-          'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.'
-      );
+      Alert.alert('Error', res?.error || 'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.');
     }
   };
 

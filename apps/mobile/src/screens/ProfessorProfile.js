@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute } from "@react-navigation/native";
 import { useProfessorDetails } from "../hooks/useProfessorDetails";
+import { EventBus } from '../utils/EventBus';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../services/AuthContext';
 import { favoritesService } from '../services/favoritesService';
 import SearchResultItem from "../components/SearchResultItem";
@@ -40,7 +42,10 @@ export default function ProfessorProfile({ navigation }) {
     coursesTaught,
     loading,
     error,
+    refetch,
   } = useProfessorDetails(professorId);
+
+  const isFocused = useIsFocused();
 
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -57,6 +62,14 @@ export default function ProfessorProfile({ navigation }) {
       checkIfFavorite();
     }
   }, [user?.id, professorId]);
+
+  // Refresh details when a review is updated/deleted or when screen focus changes
+  useEffect(() => {
+    const offU = EventBus.on('review:updated', ({ id } = {}) => refetch());
+    const offD = EventBus.on('review:deleted', ({ id } = {}) => refetch());
+    if (isFocused) refetch();
+    return () => { offU(); offD(); };
+  }, [professorId, isFocused]);
 
   const checkIfFavorite = async () => {
     try {

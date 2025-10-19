@@ -12,6 +12,8 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourseDetails } from '../hooks/useCourseDetails';
+import { EventBus } from '../utils/EventBus';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../services/AuthContext';
 import { favoritesService } from '../services/favoritesService';
 import SearchResultItem from '../components/SearchResultItem';
@@ -39,7 +41,10 @@ export default function CourseScreen() {
     avgSatisfaccion,
     avgDificultad,
     professorsAggregated,
+    refetch,
   } = useCourseDetails(courseId);
+
+  const isFocused = useIsFocused();
 
   const [selectedProfessor, setSelectedProfessor] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -55,6 +60,13 @@ export default function CourseScreen() {
       checkIfFavorite();
     }
   }, [user?.id, courseId]);
+
+  useEffect(() => {
+    const offU = EventBus.on('review:updated', ({ id } = {}) => refetch());
+    const offD = EventBus.on('review:deleted', ({ id } = {}) => refetch());
+    if (isFocused) refetch();
+    return () => { offU(); offD(); };
+  }, [courseId, isFocused]);
 
   const checkIfFavorite = async () => {
     try {

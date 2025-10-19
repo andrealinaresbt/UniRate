@@ -302,3 +302,34 @@ export async function getReviewById(id) {
   // 3) Devolver combinado
   return { success: true, data: { ...review, user } };
 }
+
+// Actualizar una reseña por ID
+export async function updateReview(id, payload = {}) {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Eliminar una reseña por ID
+export async function deleteReview(id) {
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
