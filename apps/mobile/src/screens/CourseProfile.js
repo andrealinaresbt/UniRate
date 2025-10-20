@@ -1,278 +1,287 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
-  ScrollView,
   StyleSheet,
+  ScrollView,
   ActivityIndicator,
+  FlatList,
+  Keyboard,
   TouchableOpacity,
-  Alert
-} from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCourseDetails } from '../hooks/useCourseDetails';
-import { EventBus } from '../utils/EventBus';
-import { useIsFocused } from '@react-navigation/native';
-import { useAuth } from '../services/AuthContext';
-import { favoritesService } from '../services/favoritesService';
-import SearchResultItem from '../components/SearchResultItem';
-import BackHeader from '../components/BackHeader';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRoute, useIsFocused } from "@react-navigation/native";
+import { useAuth } from "../services/AuthContext";
+import { EventBus } from "../utils/EventBus";
+import BackHeader from "../components/BackHeader";
+import FloatingReviewButton from "../components/FloatingReviewButton";
+import SearchResultItem from "../components/SearchResultItem";
+// Si tienes un hook real para materia, usa ese:
+import { useCourseDetails } from "../hooks/useCourseDetails";
 
 const COLORS = {
-  seasalt: '#F6F7F8',
-  utOrange: '#FF8200',
-  columbiaBlue: '#CFE1FB',
-  yinmnBlue: '#4C78C9',
-  resolutionBlue: '#003087',
+  seasalt: "#F6F7F8",
+  utOrange: "#FF8200",
+  columbiaBlue: "#CFE1FB",
+  yinmnBlue: "#4C78C9",
+  resolutionBlue: "#003087",
 };
 
-export default function CourseScreen() {
+export default function CourseProfile({ navigation }) {
   const route = useRoute();
-  const navigation = useNavigation();
-  const { courseId } = route.params;
+  const isFocused = useIsFocused();
   const { user } = useAuth();
 
+  // Params desde navegación (Home → CourseProfile)
+  const { courseId, courseName: courseNameParam } = route.params ?? {};
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const s1 = Keyboard.addListener("keyboardDidShow", () => setKeyboardVisible(true));
+    const s2 = Keyboard.addListener("keyboardDidHide", () => setKeyboardVisible(false));
+    return () => {
+      s1.remove();
+      s2.remove();
+    };
+  }, []);
+
+  // ========= Hook de datos de la materia =========
+  // Ajusta los nombres si tu hook devuelve otras props.
   const {
-    course,
-    reviews,
+    course,            // { id, name, ... }
+    reviews,           // array de reseñas
+    avgRating,         // número
+    avgDifficulty,     // número
+    wouldTakeAgain,    // porcentaje
+    topTags,           // array de strings (opcional)
+    professors,        // array de profesores que dictan esta materia (opcional)
     loading,
     error,
-    avgSatisfaccion,
-    avgDificultad,
-    professorsAggregated,
     refetch,
   } = useCourseDetails(courseId);
 
-  const isFocused = useIsFocused();
-
-  const [selectedProfessor, setSelectedProfessor] = useState(null);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [favoriteId, setFavoriteId] = useState(null);
-  const [favoriteLoading, setFavoriteLoading] = useState(false);
-
-  const filteredReviews = selectedProfessor
-    ? reviews.filter((r) => r.professor_id === selectedProfessor)
-    : reviews;
-
+  // Stabilize refetch (misma técnica que en ProfessorProfile)
+  const refetchRef = useRef(refetch);
   useEffect(() => {
-    if (user?.id && courseId) {
-      checkIfFavorite();
-    }
-  }, [user?.id, courseId]);
+    refetchRef.current = refetch;
+  }, [refetch]);
 
+  // Suscripción a eventos: una sola vez
   useEffect(() => {
-    const offU = EventBus.on('review:updated', ({ id } = {}) => refetch());
-    const offD = EventBus.on('review:deleted', ({ id } = {}) => refetch());
-    if (isFocused) refetch();
-    return () => { offU(); offD(); };
-  }, [courseId, isFocused]);
+    const onUpdated = () => refetchRef.current?.();
+    const onDeleted = () => refetchRef.current?.();
+    const offU = EventBus.on("review:updated", onUpdated);
+    const offD = EventBus.on("review:deleted", onDeleted);
+    return () => {
+      offU();
+      offD();
+    };
+  }, []);
 
-  const checkIfFavorite = async () => {
-    try {
-      const favorite = await favoritesService.isFavorite(user.id, 'course', courseId, null);
-      setIsFavorite(!!favorite);
-      setFavoriteId(favorite);
-    } catch (error) {
-      console.error('Error verificando favorito:', error);
+  // Refetch cuando la pantalla entra en foco
+  useEffect(() => {
+    if (isFocused) {
+      refetchRef.current?.();
     }
-  };
+  }, [isFocused]);
 
-  const toggleFavorite = async () => {
-    if (!user) {
-      Alert.alert('Iniciar sesión', 'Debes iniciar sesión para agregar favoritos');
-      navigation.navigate('Login');
-      return;
-    }
+  // Helper seguro para nombre
+  const courseName = course?.name ?? courseNameParam ?? "Materia";
 
-    setFavoriteLoading(true);
-    try {
-      if (isFavorite) {
-        if (favoriteId) {
-          await favoritesService.removeFavorite(favoriteId);
-        } else {
-          await favoritesService.removeFavoriteByReference(user.id, 'course', courseId, null);
-        }
-        setIsFavorite(false);
-        setFavoriteId(null);
-      } else {
-        const newFavorite = await favoritesService.addFavorite(user.id, 'course', courseId, null);
-        setIsFavorite(true);
-        setFavoriteId(newFavorite.id);
-      }
-    } catch (error) {
-      console.error('Error al modificar favoritos:', error);
-      Alert.alert('Error', 'No se pudo actualizar favoritos');
-    } finally {
-      setFavoriteLoading(false);
-    }
-  };
-
-  if (loading)
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.utOrange} />
       </View>
     );
-
-  if (error)
+  }
+  if (error) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: 'red' }}>Error: {error}</Text>
+        <Text style={{ color: "red" }}>Error: {error}</Text>
       </View>
     );
-
-  if (!course)
+  }
+  if (!course && !courseNameParam) {
     return (
       <View style={styles.center}>
-        <Text>No se encontró la materia</Text>
+        <Text>Materia no encontrada</Text>
       </View>
     );
+  }
 
   return (
-    <SafeAreaView edges={['top']} style={{ backgroundColor: COLORS.utOrange }}>
-      <BackHeader onBack={() => navigation.navigate('HomeScreen')} />
+    <View style={{ flex: 1 }}>
+      <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
+      <BackHeader onBack={() => navigation.goBack()} />
 
-      {/* Header con corazón */}
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.courseTitle}>{course.name}</Text>
+      {/* Header de la materia */}
+      <View style={{ backgroundColor: COLORS.resolutionBlue }}>
+        <View style={styles.header}>
+          <Text style={styles.name}>{courseName}</Text>
+          {/* Si quieres algún botón extra en el header, colócalo aquí */}
         </View>
-
-        <TouchableOpacity
-          style={styles.heartButton}
-          onPress={toggleFavorite}
-          disabled={favoriteLoading}
-        >
-          <Text style={[styles.heartIcon, isFavorite && styles.heartIconActive]}>
-            {favoriteLoading ? '⋯' : isFavorite ? '❤️' : '🤍'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* Contenido */}
-      <ScrollView
-        contentContainerStyle={{
-          padding: 20,
-          paddingBottom: 40,
-          backgroundColor: COLORS.seasalt,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>⭐ Calificación</Text>
-            <Text style={styles.statValue}>{avgSatisfaccion ?? 'N/A'}</Text>
+      <View style={{ flex: 1, backgroundColor: COLORS.seasalt }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* KPIs */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>⭐ Calificación</Text>
+              <Text style={styles.statValue}>{avgRating ?? "N/A"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>📉 Dificultad</Text>
+              <Text style={styles.statValue}>{avgDifficulty ?? "N/A"}</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>🔁 Volverían</Text>
+              <Text style={styles.statValue}>{wouldTakeAgain ?? "N/A"}%</Text>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>📉 Dificultad</Text>
-            <Text style={styles.statValue}>{avgDificultad ?? 'N/A'}</Text>
-          </View>
-        </View>
 
-        <Text style={styles.sectionTitle}>Profesores</Text>
-        <FlatList
-          data={professorsAggregated}
-          keyExtractor={(item, index) => String(item.professor_id || index)}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 20 }}
-          renderItem={({ item }) => (
-            <SearchResultItem
-              item={{
-                full_name: item.nombre,
-                avg_score: item.avgRating,
-                review_count: item.reviewsCount,
-                type: 'professor',
-              }}
-              onPress={() =>
-                setSelectedProfessor(
-                  selectedProfessor === item.professor_id ? null : item.professor_id
-                )
-              }
+          {/* Etiquetas más frecuentes (opcional) */}
+          {topTags && topTags.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Etiquetas más frecuentes</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 20 }}>
+                {topTags.map((tag, i) => (
+                  <View key={i} style={styles.tag}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Profesores que dictan la materia (opcional) */}
+          {Array.isArray(professors) && professors.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Profesores</Text>
+              <FlatList
+                data={professors}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: 20 }}
+                renderItem={({ item }) => (
+                  <SearchResultItem
+                    item={{
+                      full_name: item.full_name,
+                      avg_score: item.avg_score,
+                      review_count: item.review_count,
+                      type: "professor",
+                    }}
+                    onPress={() =>
+                      navigation.navigate("ProfessorProfile", {
+                        professorId: item.id,
+                        professorName: item.full_name,
+                      })
+                    }
+                  />
+                )}
+              />
+            </>
+          )}
+
+          {/* Reseñas */}
+          <Text style={styles.sectionTitle}>Reseñas</Text>
+          {(!reviews || reviews.length === 0) ? (
+            <Text>No hay reseñas todavía.</Text>
+          ) : (
+            <FlatList
+              data={reviews}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.reviewCard}
+                  onPress={() =>
+                    navigation.navigate("ReviewDetail", { reviewId: item.id })
+                  }
+                >
+                  {/* Si tu review tiene profesor/más datos, muéstralos aquí */}
+                  <Text style={styles.reviewDate}>
+                    {new Date(item.created_at).toLocaleDateString("es-ES")}
+                  </Text>
+                  <Text>{item.comment || "Sin comentario"}</Text>
+                </TouchableOpacity>
+              )}
             />
           )}
-        />
+        </ScrollView>
+      </View>
 
-        <Text style={styles.sectionTitle}>Reseñas</Text>
-        {filteredReviews.length === 0 ? (
-          <Text>No hay reseñas todavía.</Text>
-        ) : (
-          <FlatList
-            data={filteredReviews}
-            keyExtractor={(item) => String(item.id)}
-            scrollEnabled={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.reviewCard}
-                onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
-              >
-                <Text style={styles.reviewProfessor}>
-                  {item.professor_id
-                    ? professorsAggregated.find(
-                        (p) => p.professor_id === item.professor_id
-                      )?.nombre || 'Profesor desconocido'
-                    : 'Profesor desconocido'}
-                </Text>
-                <Text style={styles.reviewDate}>
-                  {new Date(item.created_at).toLocaleDateString('es-ES')}
-                </Text>
-                <Text>Satisfacción: {item.score}</Text>
-                <Text>Dificultad: {item.difficulty}</Text>
-                <Text style={styles.reviewComment}>
-                  {item.comment || 'Sin comentario'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-      </ScrollView>
-    </SafeAreaView>
+      {/* FAB: crear reseña para ESTA materia (con tooltip + prellenado) */}
+      {user && !keyboardVisible && (course || courseId) && (
+        <FloatingReviewButton
+          label="Crear reseña"
+          onPress={() =>
+            navigation.navigate('NuevaResena', {
+              source: 'CourseProfile',
+              prefillType: 'course',
+              courseId: course?.id ?? courseId,
+              courseName: course?.name ?? courseNameParam,
+            })
+          }
+
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  // Header
   header: {
-    paddingVertical: 50,
-    paddingTop: 80,
+    paddingVertical: 52,
     paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  titleContainer: { flex: 1 },
-  courseTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textAlign: 'center',
+  name: { fontSize: 28, fontWeight: "bold", color: "#FFF", textAlign: "center" },
+
+  // KPIs
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
   },
-  heartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  heartIcon: { fontSize: 24 },
-  heartIconActive: {},
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
   statCard: {
     flex: 1,
-    backgroundColor: '#EBEAEA',
+    backgroundColor: COLORS.columbiaBlue,
     padding: 14,
     borderRadius: 12,
     marginRight: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  statLabel: { color: COLORS.resolutionBlue, fontWeight: '600', marginBottom: 4 },
-  statValue: { fontSize: 18, color: COLORS.yinmnBlue, fontWeight: 'bold' },
-  sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: '700', color: COLORS.utOrange },
-  reviewCard: { backgroundColor: COLORS.columbiaBlue, padding: 14, marginVertical: 8, borderRadius: 12 },
-  reviewProfessor: { fontWeight: '600', fontSize: 15, color: COLORS.yinmnBlue, marginBottom: 4 },
+  statLabel: { color: COLORS.resolutionBlue, fontWeight: "600", marginBottom: 4 },
+  statValue: { fontSize: 18, color: COLORS.resolutionBlue, fontWeight: "bold" },
+
+  // Secciones
+  sectionTitle: { marginBottom: 8, fontSize: 18, fontWeight: "700", color: COLORS.yinmnBlue },
+  tag: {
+    backgroundColor: COLORS.utOrange,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  tagText: { color: "#FFF", fontWeight: "bold" },
+
+  reviewCard: {
+    backgroundColor: COLORS.columbiaBlue,
+    padding: 14,
+    marginVertical: 8,
+    borderRadius: 12,
+  },
   reviewDate: { fontSize: 12, color: COLORS.resolutionBlue, marginBottom: 6 },
-  reviewComment: { fontSize: 14, color: '#333', marginTop: 4 },
 });

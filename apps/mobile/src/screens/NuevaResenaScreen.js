@@ -47,6 +47,13 @@ export default function NuevaResenaScreen() {
   const route = useRoute();
   const editReview = route.params?.editReview;
 
+  // ========= NUEVO: origen y params para prellenado =========
+  const source = route.params?.source ?? null; // 'ProfessorProfile' | 'CourseProfile' | null
+  const prefillType = route.params?.prefillType ?? null; // 'professor' | 'course' | null
+  const prefillProfessorId = route.params?.professorId ?? null;
+  const prefillCourseId = route.params?.courseId ?? null;
+  const allowPrefill = source === 'ProfessorProfile' || source === 'CourseProfile';
+
   // catálogos
   const [profesores, setProfesores] = useState([]);
   const [materias, setMaterias] = useState([]);
@@ -92,6 +99,14 @@ export default function NuevaResenaScreen() {
     })();
   }, []);
 
+  // ========= NUEVO: aplicar prellenado si venimos de perfil (y no estamos editando)
+  useEffect(() => {
+    if (editReview) return;
+    if (!allowPrefill) return;
+    if (prefillType === 'professor' && prefillProfessorId) setProfesorId(prefillProfessorId);
+    if (prefillType === 'course' && prefillCourseId) setMateriaId(prefillCourseId);
+  }, [allowPrefill, prefillType, prefillProfessorId, prefillCourseId, editReview]);
+
   // si venimos en modo edición, prefilar campos
   useEffect(() => {
     if (!editReview) return;
@@ -111,7 +126,8 @@ export default function NuevaResenaScreen() {
   // Cargar borrador guardado (si lo hay)
   useEffect(() => {
     // If we're editing an existing review, don't load a saved draft (it may overwrite edit fields)
-    if (editReview) return;
+    // ========= NUEVO: si hay prellenado desde perfil, NO sobreescribir con borrador
+    if (editReview || allowPrefill) return;
     (async () => {
       try {
         const raw = await AsyncStorage.getItem('draft_review');
@@ -129,7 +145,7 @@ export default function NuevaResenaScreen() {
         }
       } catch (_) {}
     })();
-  }, []);
+  }, [editReview, allowPrefill]);
 
   // Autosave borrador
   useEffect(() => {
@@ -157,6 +173,7 @@ export default function NuevaResenaScreen() {
     volveria,
     comentario,
     etiquetas,
+    editReview,
   ]);
 
   const toggleEtiqueta = (tag) => {
@@ -206,8 +223,8 @@ export default function NuevaResenaScreen() {
       etiquetas, // text[] en Supabase
       // duplicate english fields used by some screens/schemas to keep both views consistent
       score: parseInt(calidad, 10),
-  // teacher-specific score column used by professor pages
-  score_teacher: parseInt(calidad, 10),
+      // teacher-specific score column used by professor pages
+      score_teacher: parseInt(calidad, 10),
       difficulty: parseInt(dificultad, 10),
       comment: comentario,
       would_take_again: volveria,
