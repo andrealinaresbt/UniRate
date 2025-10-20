@@ -103,7 +103,7 @@ function onGoogle() {
 </TouchableOpacity>
 
 
-        <TouchableOpacity onPress={() => navigation.navigate('RegisterScreen')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
 
