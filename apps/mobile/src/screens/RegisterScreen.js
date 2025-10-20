@@ -10,9 +10,24 @@ import { isUnimetCorreoEmail } from '../utils/email' // <-- Cambia aquí
 import { validatePassword } from '../utils/email'
 
 const CARRERAS = [
+  'Ingeniería Civil',
+  'Ingeniería Eléctrica',
+  'Ingeniería Mecánica',
+  'Ingeniería de Producción',
   'Ingeniería Química',
   'Ingeniería de Sistemas',
-  'Ingeniería Mecánica'
+  'Ciencias Administrativas',
+  'Economía Empresarial',
+  'Contaduría Pública',
+  'Psicología',
+  'Matemáticas Industriales',
+  'Educación',
+  'Idiomas Modernos',
+  'Comunicación Social y Empresarial',
+  'Turismo Sostenible',
+  'Derecho',
+  'Estudios Liberales',
+  'Estudios Internacionales'
 ]
 
 export default function RegisterScreen({ navigation }) {
