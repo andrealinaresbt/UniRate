@@ -12,8 +12,13 @@ import {
   FlatList,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ProfessorService } from '../services/professorService';
@@ -45,9 +50,10 @@ const COLORS = {
 export default function NuevaResenaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const editReview = route.params?.editReview;
 
-  // ========= Origen y params para prellenado =========
+  // Origen y params para prellenado
   const source = route.params?.source ?? null; // 'ProfessorProfile' | 'CourseProfile' | null
   const prefillType = route.params?.prefillType ?? null; // 'professor' | 'course' | null
   const prefillProfessorId = route.params?.professorId ?? null;
@@ -78,11 +84,10 @@ export default function NuevaResenaScreen() {
   const [openProfPicker, setOpenProfPicker] = useState(false);
   const [openCoursePicker, setOpenCoursePicker] = useState(false);
 
-  // NUEVO: queries de búsqueda en modales
+  // Buscadores en modales
   const [profQuery, setProfQuery] = useState('');
   const [courseQuery, setCourseQuery] = useState('');
 
-  // Developer helper
   const VERIFY_SAVE = false;
 
   // cargar catálogos
@@ -93,21 +98,20 @@ export default function NuevaResenaScreen() {
           ProfessorService.getAllProfessors(),
           ReviewService.getAllCourses(),
         ]);
-
-      if (p.success) {
-        const ordenadosP = (p.data || []).sort((a, b) =>
-          (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
-        );
-        setProfesores(ordenadosP);
-      }
-
-      if (c.success) {
-        const ordenadosC = (c.data || []).sort((a, b) =>
-          (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
-        );
-        setMaterias(ordenadosC);
-      }
-
+        if (p.success) {
+          // orden alfabético
+          const ordenadosP = (p.data || []).sort((a, b) =>
+            (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+          );
+          setProfesores(ordenadosP);
+        }
+        if (c.success) {
+          // orden alfabético
+          const ordenadosC = (c.data || []).sort((a, b) =>
+            (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
+          );
+          setMaterias(ordenadosC);
+        }
       } catch (_) {
         Alert.alert('Error', 'No fue posible cargar los catálogos.');
       } finally {
@@ -116,7 +120,7 @@ export default function NuevaResenaScreen() {
     })();
   }, []);
 
-  // aplicar prellenado si venimos de perfil (y no estamos editando)
+  // prellenado si venimos de perfil (y no estamos editando)
   useEffect(() => {
     if (editReview) return;
     if (!allowPrefill) return;
@@ -140,9 +144,8 @@ export default function NuevaResenaScreen() {
     } catch (_) {}
   }, [editReview]);
 
-  // Cargar borrador guardado (si lo hay)
+  // Cargar borrador guardado (si lo hay) — no si hay edición o prellenado
   useEffect(() => {
-    // No cargar borrador si hay edición o prellenado desde perfil
     if (editReview || allowPrefill) return;
     (async () => {
       try {
@@ -163,9 +166,9 @@ export default function NuevaResenaScreen() {
     })();
   }, [editReview, allowPrefill]);
 
-  // Autosave borrador
+  // Autosave borrador (no en edición)
   useEffect(() => {
-    if (editReview) return; // no guardar borrador en modo edición
+    if (editReview) return;
     const payload = {
       profesorId,
       materiaId,
@@ -235,8 +238,8 @@ export default function NuevaResenaScreen() {
       dificultad: parseInt(dificultad, 10),
       volveria,
       comentario,
-      etiquetas,
-      // fields alternos usados en otras pantallas
+      etiquetas, // text[] en Supabase
+      // duplicate fields usados en otras pantallas/esquemas
       score: parseInt(calidad, 10),
       score_teacher: parseInt(calidad, 10),
       difficulty: parseInt(dificultad, 10),
@@ -244,7 +247,6 @@ export default function NuevaResenaScreen() {
       would_take_again: volveria,
     };
 
-    // helper timeout
     const withTimeout = (p, ms = 15000) =>
       Promise.race([
         p,
@@ -288,9 +290,7 @@ export default function NuevaResenaScreen() {
     } else {
       setStatus('error');
       let friendlyMsg = 'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.';
-
       const errMsg = (res?.error || '').toLowerCase();
-
       if (
         errMsg.includes('duplicate') ||
         errMsg.includes('unique constraint') ||
@@ -298,13 +298,11 @@ export default function NuevaResenaScreen() {
       ) {
         friendlyMsg = 'Ya has publicado una reseña para este profesor y materia. Solo se permite una reseña por combinación.';
       }
-
       Alert.alert('⚠️ No se pudo guardar', friendlyMsg);
     }
-
   };
 
-
+  // filtros (ordenan también)
   const filteredProfesores = useMemo(() => {
     const q = profQuery.trim().toLowerCase();
     const lista = profesores.filter((p) =>
@@ -327,7 +325,6 @@ export default function NuevaResenaScreen() {
     );
   }, [courseQuery, materias]);
 
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -337,249 +334,273 @@ export default function NuevaResenaScreen() {
     );
   }
 
+  // ----- UI con teclado cómodo y botón fijo -----
   return (
-    <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Publicar Reseña</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.select({ ios: 64, android: 0 })}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={styles.screen}
+            contentContainerStyle={[styles.content, { paddingBottom: 160 }]} // espacio para no tapar el final
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <Text style={styles.title}>Publicar Reseña</Text>
 
-      {/* Profesor */}
-      <Text style={styles.label}>Profesor *</Text>
-      <TouchableOpacity
-        style={styles.select}
-        onPress={() => {
-          setProfQuery('');
-          setOpenProfPicker(true);
-        }}
-      >
-        <Text style={styles.selectText}>
-          {profesorId
-            ? profesores.find((p) => p.id === profesorId)?.full_name ||
-              'Profesor seleccionado'
-            : 'Selecciona un profesor'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Materia */}
-      <Text style={styles.label}>Materia *</Text>
-      <TouchableOpacity
-        style={styles.select}
-        onPress={() => {
-          setCourseQuery('');
-          setOpenCoursePicker(true);
-        }}
-      >
-        <Text style={styles.selectText}>
-          {materiaId
-            ? materias.find((m) => m.id === materiaId)?.name ||
-              'Materia seleccionada'
-            : 'Selecciona una materia'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Switches */}
-      <View style={styles.row}>
-        <Text style={styles.labelInline}>¿Toma asistencia?</Text>
-        <Switch
-          value={asistencia}
-          onValueChange={setAsistencia}
-          trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
-          thumbColor={asistencia ? COLORS.accent : COLORS.white}
-        />
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.labelInline}>¿La materia es mayormente teórica?</Text>
-        <Switch
-          value={usoTexto}
-          onValueChange={setUsoTexto}
-          trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
-          thumbColor={usoTexto ? COLORS.accent : COLORS.white}
-        />
-      </View>
-
-      {/* Calificaciones */}
-      <Text style={styles.label}>Puntuación (1–5) *</Text>
-      <TextInput
-        style={styles.input}
-        value={calidad}
-        onChangeText={setCalidad}
-        placeholder="Ej: 4"
-        keyboardType="number-pad"
-        maxLength={1}
-        placeholderTextColor={COLORS.muted}
-      />
-
-      <Text style={styles.label}>Dificultad (1–5) *</Text>
-      <TextInput
-        style={styles.input}
-        value={dificultad}
-        onChangeText={setDificultad}
-        placeholder="Ej: 3"
-        keyboardType="number-pad"
-        maxLength={1}
-        placeholderTextColor={COLORS.muted}
-      />
-
-      {/* Volvería */}
-      <View style={styles.row}>
-        <Text style={styles.labelInline}>¿Recomendarías este profesor?</Text>
-        <Switch
-          value={volveria}
-          onValueChange={setVolveria}
-          trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
-          thumbColor={volveria ? COLORS.accent : COLORS.white}
-        />
-      </View>
-
-      {/* Comentario */}
-      <Text style={styles.label}>Comentario (máx. 300)</Text>
-      <TextInput
-        style={[styles.input, { minHeight: 90 }]}
-        value={comentario}
-        onChangeText={setComentario}
-        placeholder="Escribe tu experiencia…"
-        multiline
-        maxLength={300}
-        placeholderTextColor={COLORS.muted}
-      />
-      <Text style={styles.helper}>{comentario.length}/300 caracteres</Text>
-
-      {/* Etiquetas */}
-      <Text style={styles.label}>Etiquetas (máx. 3)</Text>
-      <View style={styles.tagsWrap}>
-        {TAGS.map((tag) => {
-          const active = etiquetas.includes(tag);
-          return (
+            {/* Profesor */}
+            <Text style={styles.label}>Profesor *</Text>
             <TouchableOpacity
-              key={tag}
-              style={[styles.tag, active && styles.tagActive]}
-              onPress={() => toggleEtiqueta(tag)}
+              style={styles.select}
+              onPress={() => {
+                setProfQuery('');
+                setOpenProfPicker(true);
+              }}
             >
-              <Text style={[styles.tagText, active && styles.tagTextActive]}>
-                {tag}
+              <Text style={styles.selectText}>
+                {profesorId
+                  ? profesores.find((p) => p.id === profesorId)?.full_name ||
+                    'Profesor seleccionado'
+                  : 'Selecciona un profesor'}
               </Text>
             </TouchableOpacity>
-          );
-        })}
-      </View>
 
-      {/* Botón enviar */}
-      <TouchableOpacity
-        style={[styles.button, submitting && { opacity: 0.6 }]}
-        disabled={submitting}
-        onPress={handleSubmit}
-      >
-        {submitting ? (
-          <ActivityIndicator color={COLORS.white} />
-        ) : (
-          <Text style={styles.buttonText}>Enviar Reseña</Text>
-        )}
-      </TouchableOpacity>
+            {/* Materia */}
+            <Text style={styles.label}>Materia *</Text>
+            <TouchableOpacity
+              style={styles.select}
+              onPress={() => {
+                setCourseQuery('');
+                setOpenCoursePicker(true);
+              }}
+            >
+              <Text style={styles.selectText}>
+                {materiaId
+                  ? materias.find((m) => m.id === materiaId)?.name ||
+                    'Materia seleccionada'
+                  : 'Selecciona una materia'}
+              </Text>
+            </TouchableOpacity>
 
-      {status !== 'idle' && (
-        <Text style={styles.helper}>
-          {status === 'validando' && 'Validando…'}
-          {status === 'enviando' && 'Enviando…'}
-          {status === 'exito' && '✅ Enviado correctamente'}
-          {status === 'error' && '⚠️ Revisa los datos e inténtalo de nuevo'}
-        </Text>
-      )}
-
-      {/* Picker Profesor */}
-      <Modal
-        visible={openProfPicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpenProfPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Selecciona profesor</Text>
-
-            {/* NUEVO: Buscador */}
-            <TextInput
-              style={styles.searchInput}
-              value={profQuery}
-              onChangeText={setProfQuery}
-              placeholder="Buscar profesor…"
-              placeholderTextColor={COLORS.muted}
-              autoFocus
-            />
-
-            {filteredProfesores.length === 0 ? (
-              <Text style={styles.emptyText}>No hay resultados</Text>
-            ) : (
-              <FlatList
-                data={filteredProfesores}
-                keyExtractor={(item) => String(item.id)}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.modalItem}
-                    onPress={() => {
-                      setProfesorId(item.id);
-                      setOpenProfPicker(false);
-                    }}
-                  >
-                    <Text style={styles.modalItemText}>{item.full_name}</Text>
-                  </TouchableOpacity>
-                )}
+            {/* Switches */}
+            <View style={styles.row}>
+              <Text style={styles.labelInline}>¿Toma asistencia?</Text>
+              <Switch
+                value={asistencia}
+                onValueChange={setAsistencia}
+                trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
+                thumbColor={asistencia ? COLORS.accent : COLORS.white}
               />
-            )}
-          </View>
-        </View>
-      </Modal>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.labelInline}>¿La materia es mayormente teórica?</Text>
+              <Switch
+                value={usoTexto}
+                onValueChange={setUsoTexto}
+                trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
+                thumbColor={usoTexto ? COLORS.accent : COLORS.white}
+              />
+            </View>
 
-      {/* Picker Materia */}
-      <Modal
-        visible={openCoursePicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpenCoursePicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Selecciona materia</Text>
-
-            {/* NUEVO: Buscador */}
+            {/* Calificaciones */}
+            <Text style={styles.label}>Puntuación (1–5) *</Text>
             <TextInput
-              style={styles.searchInput}
-              value={courseQuery}
-              onChangeText={setCourseQuery}
-              placeholder="Buscar materia o código…"
+              style={styles.input}
+              value={calidad}
+              onChangeText={setCalidad}
+              placeholder="Ej: 4"
+              keyboardType="number-pad"
+              maxLength={1}
               placeholderTextColor={COLORS.muted}
-              autoFocus
+              returnKeyType="done"
             />
 
-            {filteredMaterias.length === 0 ? (
-              <Text style={styles.emptyText}>No hay resultados</Text>
-            ) : (
-              <FlatList
-                data={filteredMaterias}
-                keyExtractor={(item) => String(item.id)}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => (
+            <Text style={styles.label}>Dificultad (1–5) *</Text>
+            <TextInput
+              style={styles.input}
+              value={dificultad}
+              onChangeText={setDificultad}
+              placeholder="Ej: 3"
+              keyboardType="number-pad"
+              maxLength={1}
+              placeholderTextColor={COLORS.muted}
+              returnKeyType="done"
+            />
+
+            {/* Volvería */}
+            <View style={styles.row}>
+              <Text style={styles.labelInline}>¿Recomendarías este profesor?</Text>
+              <Switch
+                value={volveria}
+                onValueChange={setVolveria}
+                trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
+                thumbColor={volveria ? COLORS.accent : COLORS.white}
+              />
+            </View>
+
+            {/* Comentario */}
+            <Text style={styles.label}>Comentario (máx. 300)</Text>
+            <TextInput
+              style={[styles.input, { minHeight: 90 }]}
+              value={comentario}
+              onChangeText={setComentario}
+              placeholder="Escribe tu experiencia…"
+              multiline
+              maxLength={300}
+              placeholderTextColor={COLORS.muted}
+              textAlignVertical="top"
+              returnKeyType="default"
+            />
+            <Text style={styles.helper}>{comentario.length}/300 caracteres</Text>
+
+            {/* Etiquetas */}
+            <Text style={styles.label}>Etiquetas (máx. 3)</Text>
+            <View style={styles.tagsWrap}>
+              {TAGS.map((tag) => {
+                const active = etiquetas.includes(tag);
+                return (
                   <TouchableOpacity
-                    style={styles.modalItem}
-                    onPress={() => {
-                      setMateriaId(item.id);
-                      setOpenCoursePicker(false);
-                    }}
+                    key={tag}
+                    style={[styles.tag, active && styles.tagActive]}
+                    onPress={() => toggleEtiqueta(tag)}
                   >
-                    <Text style={styles.modalItemText}>
-                      {item.name} {item.code ? `(${item.code})` : ''}
+                    <Text style={[styles.tagText, active && styles.tagTextActive]}>
+                      {tag}
                     </Text>
                   </TouchableOpacity>
-                )}
-              />
+                );
+              })}
+            </View>
+
+            {/* Espaciador para que el último campo no quede tapado */}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+
+          {/* Footer fijo con botón */}
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+            <TouchableOpacity
+              style={[styles.button, submitting && { opacity: 0.6 }]}
+              disabled={submitting}
+              onPress={handleSubmit}
+            >
+              {submitting ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={styles.buttonText}>Enviar Reseña</Text>
+              )}
+            </TouchableOpacity>
+
+            {status !== 'idle' && (
+              <Text style={styles.footerHelper}>
+                {status === 'validando' && 'Validando…'}
+                {status === 'enviando' && 'Enviando…'}
+                {status === 'exito' && '✅ Enviado correctamente'}
+                {status === 'error' && '⚠️ Revisa los datos e inténtalo de nuevo'}
+              </Text>
             )}
           </View>
+
+          {/* Picker Profesor */}
+          <Modal
+            visible={openProfPicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpenProfPicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Selecciona profesor</Text>
+
+                <TextInput
+                  style={styles.searchInput}
+                  value={profQuery}
+                  onChangeText={setProfQuery}
+                  placeholder="Buscar profesor…"
+                  placeholderTextColor={COLORS.muted}
+                  autoFocus
+                />
+
+                {filteredProfesores.length === 0 ? (
+                  <Text style={styles.emptyText}>No hay resultados</Text>
+                ) : (
+                  <FlatList
+                    data={filteredProfesores}
+                    keyExtractor={(item) => String(item.id)}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.modalItem}
+                        onPress={() => {
+                          setProfesorId(item.id);
+                          setOpenProfPicker(false);
+                        }}
+                      >
+                        <Text style={styles.modalItemText}>{item.full_name}</Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+              </View>
+            </View>
+          </Modal>
+
+          {/* Picker Materia */}
+          <Modal
+            visible={openCoursePicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpenCoursePicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Selecciona materia</Text>
+
+                <TextInput
+                  style={styles.searchInput}
+                  value={courseQuery}
+                  onChangeText={setCourseQuery}
+                  placeholder="Buscar materia o código…"
+                  placeholderTextColor={COLORS.muted}
+                  autoFocus
+                />
+
+                {filteredMaterias.length === 0 ? (
+                  <Text style={styles.emptyText}>No hay resultados</Text>
+                ) : (
+                  <FlatList
+                    data={filteredMaterias}
+                    keyExtractor={(item) => String(item.id)}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.modalItem}
+                        onPress={() => {
+                          setMateriaId(item.id);
+                          setOpenCoursePicker(false);
+                        }}
+                      >
+                        <Text style={styles.modalItemText}>
+                          {item.name} {item.code ? `(${item.code})` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+              </View>
+            </View>
+          </Modal>
         </View>
-      </Modal>
-    </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 20, backgroundColor: COLORS.bg },
+  screen: { flex: 1, backgroundColor: COLORS.bg },
+  content: { padding: 20 },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -639,14 +660,45 @@ const styles = StyleSheet.create({
   tagActive: { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary },
   tagText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
   tagTextActive: { color: COLORS.white },
+
+  // Footer sticky
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 10,
+    paddingHorizontal: 20,
+    backgroundColor: COLORS.white,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: COLORS.border,
+    // sombra ligera
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: -2 },
+      },
+      android: { elevation: 8 },
+    }),
+  },
   button: {
     height: 50,
     borderRadius: 12,
-    backgroundColor: COLORS.accent, // CTA naranja
+    backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: { color: COLORS.white, fontWeight: '700' },
+
+  footerHelper: {
+    marginTop: 6,
+    fontSize: 12,
+    color: COLORS.muted,
+    textAlign: 'center',
+  },
+
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.bg },
 
   // Modales
@@ -674,7 +726,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyText: { textAlign: 'center', color: COLORS.muted, paddingVertical: 16 },
-
   modalItem: {
     paddingVertical: 12,
     paddingHorizontal: 8,
