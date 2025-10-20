@@ -624,14 +624,32 @@ const scrollTo = (key, extra = 0) => {
               <View style={styles.modalCard}>
                 <Text style={styles.modalTitle}>Selecciona profesor</Text>
 
-                <TextInput
-                  style={styles.searchInput}
-                  value={profQuery}
-                  onChangeText={setProfQuery}
-                  placeholder="Buscar profesor…"
-                  placeholderTextColor={COLORS.muted}
-                  autoFocus
-                />
+                {/* Barra de búsqueda */}
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={styles.searchInput}
+                    value={profQuery}
+                    onChangeText={setProfQuery}
+                    placeholder="Buscar profesor…"
+                    placeholderTextColor={COLORS.muted}
+                    autoFocus
+                    returnKeyType="search"
+                    onSubmitEditing={Keyboard.dismiss}   // cerrar teclado al hacer “search”
+                    clearButtonMode="while-editing"
+                  />
+                  {!!profQuery && (
+                    <TouchableOpacity
+                      style={styles.clearX}
+                      onPress={() => {
+                        setProfQuery('');
+                        Keyboard.dismiss();
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.clearXText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {filteredProfesores.length === 0 ? (
                   <Text style={styles.emptyText}>No hay resultados</Text>
@@ -640,6 +658,8 @@ const scrollTo = (key, extra = 0) => {
                     data={filteredProfesores}
                     keyExtractor={(item) => String(item.id)}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
+                    onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
                     renderItem={({ item }) => (
                       <TouchableOpacity
                         style={styles.modalItem}
@@ -658,17 +678,20 @@ const scrollTo = (key, extra = 0) => {
             </View>
           </Modal>
 
-          {/* Picker Materia */}
-          <Modal
-            visible={openCoursePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setOpenCoursePicker(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>Selecciona materia</Text>
 
+        {/* Picker Materia */}
+        <Modal
+          visible={openCoursePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setOpenCoursePicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Selecciona materia</Text>
+
+              {/* Barra de búsqueda */}
+              <View style={styles.searchRow}>
                 <TextInput
                   style={styles.searchInput}
                   value={courseQuery}
@@ -676,34 +699,54 @@ const scrollTo = (key, extra = 0) => {
                   placeholder="Buscar materia o código…"
                   placeholderTextColor={COLORS.muted}
                   autoFocus
+                  returnKeyType="search"
+                  onSubmitEditing={Keyboard.dismiss}
+                  clearButtonMode="while-editing"
                 />
-
-                {filteredMaterias.length === 0 ? (
-                  <Text style={styles.emptyText}>No hay resultados</Text>
-                ) : (
-                  <FlatList
-                    data={filteredMaterias}
-                    keyExtractor={(item) => String(item.id)}
-                    keyboardShouldPersistTaps="handled"
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.modalItem}
-                        onPress={() => {
-                          setMateriaId(item.id);
-                          setOpenCoursePicker(false);
-                          Keyboard.dismiss();
-                        }}
-                      >
-                        <Text style={styles.modalItemText}>
-                          {item.name} {item.code ? `(${item.code})` : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  />
+                {!!courseQuery && (
+                  <TouchableOpacity
+                    style={styles.clearX}
+                    onPress={() => {
+                      setCourseQuery('');
+                      Keyboard.dismiss();
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.clearXText}>✕</Text>
+                  </TouchableOpacity>
                 )}
               </View>
+
+              {filteredMaterias.length === 0 ? (
+                <Text style={styles.emptyText}>No hay resultados</Text>
+              ) : (
+                <FlatList
+                  data={filteredMaterias}
+                  keyExtractor={(item) => String(item.id)}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
+                  onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setMateriaId(item.id);
+                        setOpenCoursePicker(false);
+                        Keyboard.dismiss();
+                      }}
+                    >
+                      <Text style={styles.modalItemText}>
+                        {item.name} {item.code ? `(${item.code})` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
             </View>
-          </Modal>
+          </View>
+        </Modal>
+
+
         {Platform.OS === 'ios' && (
           <>
             <InputAccessoryView nativeID={ACC_SCORE}>
@@ -914,6 +957,25 @@ const styles = StyleSheet.create({
   backgroundColor: '#F2F3F5',
   borderTopWidth: StyleSheet.hairlineWidth,
   borderTopColor: '#D6DAE1',
+},
+searchRow: {
+  position: 'relative',
+  marginBottom: 8,
+},
+clearX: {
+  position: 'absolute',
+  right: 10,
+  top: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#E9EEF5',
+},
+clearXText: {
+  color: '#334155',
+  fontWeight: '700',
 },
 accessoryHint: {
   fontSize: 13,
