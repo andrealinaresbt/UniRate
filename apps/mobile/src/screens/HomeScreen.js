@@ -23,6 +23,9 @@ import { useAuth } from '../services/AuthContext';
 import { fetchIsAdmin } from '../services/AuthService';
 import { ErrorPopup } from '../components/NetErrorPopup';
 import FloatingReviewButton from '../components/FloatingReviewButton';
+import { Image } from 'react-native';
+import { Dimensions } from 'react-native';
+const W = Dimensions.get('window').width;
 
 export default function HomeScreen({ navigation }) {
   const { user, loading: authContextLoading } = useAuth();
@@ -118,6 +121,11 @@ export default function HomeScreen({ navigation }) {
 
       <SafeAreaView style={styles.safeAreaContent} edges={['left', 'right', 'bottom']}>
         <View style={styles.topSection}>
+          <Image
+            source={require('../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.heroTitle}>Encuentra tus profesores y materias</Text>
           <View style={styles.searchContainer}>
             <TextInput
@@ -220,8 +228,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingRight: 50,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
-      android: { elevation: 4 },
+      ios: { shadowColor:'#000', shadowOpacity:0.08, shadowRadius:10, shadowOffset:{width:0,height:6} },
+      android: { elevation:8 }
     }),
   },
   clearButton: { position: 'absolute', right: 15, width: 30, height: 30, borderRadius: 15, backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' },
@@ -256,4 +264,13 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 18, color: '#666', textAlign: 'center', marginBottom: 8 },
   emptySubtext: { fontSize: 14, color: '#888', textAlign: 'center' },
+logo: {
+  width: Math.min(0.55 * W, 280), // 55% del ancho, tope 280
+  height: Math.min(0.55 * W, 280) * 0.38, // relación aprox del PNG
+  alignSelf:'center',
+  marginTop: 6,
+  marginBottom: 14,
+},
+
+
 });
