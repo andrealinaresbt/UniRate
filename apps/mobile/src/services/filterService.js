@@ -47,6 +47,14 @@ export const filterService = {
     if (filters.maxDifficulty !== null && filters.maxDifficulty !== undefined) {
       query = query.lte('difficulty', filters.maxDifficulty);
     }
+    // Filtro por fecha
+    if (filters.startDate) {
+    query = query.gte('created_at', `${filters.startDate}T00:00:00+00:00`);
+    }
+
+    if (filters.endDate) {
+    query = query.lte('created_at', `${filters.endDate}T23:59:59+00:00`);
+    }
 
     // Ordenar
     if (filters.sortBy) {

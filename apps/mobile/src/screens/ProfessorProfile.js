@@ -221,12 +221,21 @@ export default function ProfessorProfile({ navigation }) {
 
   const handleClearFilters = () => {
     // Limpiar completamente todos los estados de filtros
-    setFilters({});
+    setFilters({
+      courseId: null,
+      professorId: null,
+      minRating: 1,
+      maxRating: 5,
+      minDifficulty: 1,
+      maxDifficulty: 5,
+      startDate: null,
+      endDate: null,
+      sortBy: 'newest'
+    });
     setAppliedFilters({});
-    setFilteredReviews([]); // También limpiar filteredReviews
     setFilterModalVisible(false);
     
-    // Forzar un refresh para mostrar todas las reseñas
+    // Forzar mostrar todas las reseñas
     const finalReviews = selectedCourse
       ? reviews.filter((r) => r.course_id === selectedCourse)
       : reviews;
@@ -244,6 +253,7 @@ export default function ProfessorProfile({ navigation }) {
     if (appliedFilters.professorId) count++;
     if (appliedFilters.minRating > 1 || appliedFilters.maxRating < 5) count++;
     if (appliedFilters.minDifficulty > 1 || appliedFilters.maxDifficulty < 5) count++;
+    if (appliedFilters.startDate || appliedFilters.endDate) count++; // AÑADIDO: filtro por fechas
     if (appliedFilters.sortBy && appliedFilters.sortBy !== 'newest') count++;
     return count;
   };
@@ -376,7 +386,7 @@ export default function ProfessorProfile({ navigation }) {
               onPress={() => setFilterModalVisible(true)}
             >
               <Text style={styles.filterButtonText}>
-                🎯 {getActiveFiltersCount() > 0 ? `(${getActiveFiltersCount()})` : ''}
+                Filtros{getActiveFiltersCount() > 0 ? `(${getActiveFiltersCount()})` : ''}
               </Text>
             </TouchableOpacity>
           </View>
@@ -430,12 +440,13 @@ export default function ProfessorProfile({ navigation }) {
 
       {/* Modal de Filtros */}
       <FilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
-        onApplyFilters={handleApplyFilters}
-        context={{ professorId }}
-        currentFilters={filters}
-      />
+      key={JSON.stringify(filters)} // Esto fuerza el remount cuando filters cambia
+      visible={filterModalVisible}
+      onClose={() => setFilterModalVisible(false)}
+      onApplyFilters={handleApplyFilters}
+      context={{ professorId }}
+      currentFilters={filters}
+    />
     </View>
   );
 }

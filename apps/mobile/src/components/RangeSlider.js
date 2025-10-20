@@ -21,8 +21,8 @@ export default function RangeSlider({
   const [lowValue, setLowValue] = useState(initialLow);
   const [highValue, setHighValue] = useState(initialHigh);
   const [sliderWidth, setSliderWidth] = useState(0);
-  const lowThumbRef = useRef(null); // CORREGIDO
-  const highThumbRef = useRef(null); // CORREGIDO
+  const lowThumbRef = useRef(null);
+  const highThumbRef = useRef(null);
   const [activeThumb, setActiveThumb] = useState(null);
 
   const calculateValueFromPosition = (xPosition) => {
@@ -34,8 +34,18 @@ export default function RangeSlider({
   };
 
   const updateValues = (newLow, newHigh) => {
-    const clampedLow = Math.min(Math.max(min, newLow), highValue - step);
-    const clampedHigh = Math.max(Math.min(max, newHigh), lowValue + step);
+    // CORREGIDO: Asegurar que low nunca sea mayor que high y viceversa
+    let clampedLow = Math.min(Math.max(min, newLow), max);
+    let clampedHigh = Math.max(Math.min(max, newHigh), min);
+    
+    // Si los valores se cruzan, ajustar automáticamente
+    if (clampedLow > clampedHigh) {
+      if (activeThumb === 'low') {
+        clampedHigh = clampedLow;
+      } else {
+        clampedLow = clampedHigh;
+      }
+    }
     
     setLowValue(clampedLow);
     setHighValue(clampedHigh);
@@ -54,6 +64,7 @@ export default function RangeSlider({
       updateValues(newValue, highValue);
     },
     onPanResponderRelease: () => setActiveThumb(null),
+    onPanResponderTerminate: () => setActiveThumb(null),
   });
 
   const highPanResponder = PanResponder.create({
@@ -65,6 +76,7 @@ export default function RangeSlider({
       updateValues(lowValue, newValue);
     },
     onPanResponderRelease: () => setActiveThumb(null),
+    onPanResponderTerminate: () => setActiveThumb(null),
   });
 
   const lowPosition = ((lowValue - min) / (max - min)) * 100;
@@ -79,51 +91,53 @@ export default function RangeSlider({
         <Text style={styles.valueLabel}>{highValue}</Text>
       </View>
 
-      {/* Track del slider */}
+      {/* Track del slider - Área táctil más grande */}
       <View 
-        style={styles.track}
+        style={styles.trackContainer}
         onLayout={(event) => {
           const { width } = event.nativeEvent.layout;
           setSliderWidth(width);
         }}
       >
-        {/* Línea completa */}
-        <View style={styles.fullTrack} />
-        
-        {/* Línea activa entre los thumbs */}
-        <View 
-          style={[
-            styles.activeTrack,
-            { 
-              left: `${lowPosition}%`,
-              width: `${highPosition - lowPosition}%`
-            }
-          ]} 
-        />
-        
-        {/* Thumb izquierdo (mínimo) */}
-        <View
-          ref={lowThumbRef}
-          style={[
-            styles.thumb,
-            styles.thumbLeft,
-            activeThumb === 'low' && styles.thumbActive,
-            { left: `${lowPosition}%` }
-          ]}
-          {...lowPanResponder.panHandlers}
-        />
-        
-        {/* Thumb derecho (máximo) */}
-        <View
-          ref={highThumbRef}
-          style={[
-            styles.thumb,
-            styles.thumbRight,
-            activeThumb === 'high' && styles.thumbActive,
-            { left: `${highPosition}%` }
-          ]}
-          {...highPanResponder.panHandlers}
-        />
+        <View style={styles.track}>
+          {/* Línea completa */}
+          <View style={styles.fullTrack} />
+          
+          {/* Línea activa entre los thumbs */}
+          <View 
+            style={[
+              styles.activeTrack,
+              { 
+                left: `${lowPosition}%`,
+                width: `${Math.max(0, highPosition - lowPosition)}%`
+              }
+            ]} 
+          />
+          
+          {/* Thumb izquierdo (mínimo) */}
+          <View
+            ref={lowThumbRef}
+            style={[
+              styles.thumb,
+              styles.thumbLeft,
+              activeThumb === 'low' && styles.thumbActive,
+              { left: `${lowPosition}%` }
+            ]}
+            {...lowPanResponder.panHandlers}
+          />
+          
+          {/* Thumb derecho (máximo) */}
+          <View
+            ref={highThumbRef}
+            style={[
+              styles.thumb,
+              styles.thumbRight,
+              activeThumb === 'high' && styles.thumbActive,
+              { left: `${highPosition}%` }
+            ]}
+            {...highPanResponder.panHandlers}
+          />
+        </View>
       </View>
 
       {/* Marcas */}
@@ -138,19 +152,24 @@ export default function RangeSlider({
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 20,
+    paddingVertical: 15,
   },
   valueLabels: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   valueLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1A1A1A',
-    marginHorizontal: 4,
+    marginHorizontal: 6,
+  },
+  trackContainer: {
+    height: 50, // Área táctil más grande
+    justifyContent: 'center',
+    position: 'relative',
   },
   track: {
     height: 40,
@@ -161,45 +180,47 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 4,
+    height: 6,
     backgroundColor: '#E9ECEF',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   activeTrack: {
     position: 'absolute',
-    height: 4,
-    backgroundColor: '#FF6B6B',
-    borderRadius: 2,
+    height: 6,
+    backgroundColor: '#FF8200',
+    borderRadius: 3,
   },
   thumb: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
-    borderColor: '#FF6B6B',
+    borderColor: '#FF8200',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 10,
   },
   thumbLeft: {
-    marginLeft: -12,
+    marginLeft: -14,
   },
   thumbRight: {
-    marginLeft: -12,
+    marginLeft: -14,
   },
   thumbActive: {
     borderWidth: 4,
-    shadowOpacity: 0.3,
-    elevation: 5,
+    shadowOpacity: 0.4,
+    elevation: 8,
+    transform: [{ scale: 1.15 }],
   },
   marks: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 10,
   },
   mark: {
     fontSize: 12,

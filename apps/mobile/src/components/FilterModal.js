@@ -1,3 +1,4 @@
+// components/FilterModal.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -5,10 +6,20 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  StyleSheet
+  StyleSheet,
+  Platform
 } from 'react-native';
 import { filterService } from '../services/filterService';
 import RangeSlider from './RangeSlider';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+const COLORS = {
+  seasalt: "#F6F7F8",
+  utOrange: "#FF8200",
+  columbiaBlue: "#CFE1FB",
+  yinmnBlue: "#4C78C9",
+  resolutionBlue: "#003087",
+};
 
 const SORT_OPTIONS = [
   { label: 'Más recientes', value: 'newest' },
@@ -33,29 +44,42 @@ export default function FilterModal({
     maxRating: 5,
     minDifficulty: 1,
     maxDifficulty: 5,
+    startDate: null,
+    endDate: null,
     sortBy: 'newest',
-    ...currentFilters
   });
 
   const [courses, setCourses] = useState([]);
   const [professors, setProfessors] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState(null);
+  const [tempEndDate, setTempEndDate] = useState(null);
 
+  // Resetear filtros cuando el modal se abre/cierra o currentFilters cambia
   useEffect(() => {
     if (visible) {
       loadFilterOptions();
-      // Resetear valores si no hay filtros activos
-      if (Object.keys(currentFilters).length === 0) {
-        setFilters(prev => ({
-          ...prev,
-          minRating: 1,
-          maxRating: 5,
-          minDifficulty: 1,
-          maxDifficulty: 5
-        }));
-      }
+      
+      // Siempre sincronizar con currentFilters cuando el modal se abre
+      const syncedFilters = {
+        courseId: currentFilters.courseId || null,
+        professorId: currentFilters.professorId || null,
+        minRating: currentFilters.minRating !== undefined ? currentFilters.minRating : 1,
+        maxRating: currentFilters.maxRating !== undefined ? currentFilters.maxRating : 5,
+        minDifficulty: currentFilters.minDifficulty !== undefined ? currentFilters.minDifficulty : 1,
+        maxDifficulty: currentFilters.maxDifficulty !== undefined ? currentFilters.maxDifficulty : 5,
+        startDate: currentFilters.startDate ? new Date(currentFilters.startDate) : null,
+        endDate: currentFilters.endDate ? new Date(currentFilters.endDate) : null,
+        sortBy: currentFilters.sortBy || 'newest',
+      };
+      
+      setFilters(syncedFilters);
+      setTempStartDate(null);
+      setTempEndDate(null);
     }
-  }, [visible, context]);
+  }, [visible, currentFilters]);
 
   const loadFilterOptions = async () => {
     setLoading(true);
@@ -80,6 +104,7 @@ export default function FilterModal({
     if (filters.professorId) count++;
     if (filters.minRating > 1 || filters.maxRating < 5) count++;
     if (filters.minDifficulty > 1 || filters.maxDifficulty < 5) count++;
+    if (filters.startDate || filters.endDate) count++;
     if (filters.sortBy && filters.sortBy !== 'newest') count++;
     return count;
   };
@@ -89,20 +114,16 @@ export default function FilterModal({
   };
 
   const handleApply = () => {
-    // Preparar filtros para enviar (solo enviar si no es el rango completo o valor por defecto)
     const filtersToApply = {};
     
-    // Solo incluir courseId si tiene valor
     if (filters.courseId) {
       filtersToApply.courseId = filters.courseId;
     }
     
-    // Solo incluir professorId si tiene valor
     if (filters.professorId) {
       filtersToApply.professorId = filters.professorId;
     }
     
-    // Solo incluir rating si no es el rango completo
     if (filters.minRating > 1) {
       filtersToApply.minRating = filters.minRating;
     }
@@ -110,15 +131,20 @@ export default function FilterModal({
       filtersToApply.maxRating = filters.maxRating;
     }
     
-    // Solo incluir difficulty si no es el rango completo
     if (filters.minDifficulty > 1) {
       filtersToApply.minDifficulty = filters.minDifficulty;
     }
     if (filters.maxDifficulty < 5) {
       filtersToApply.maxDifficulty = filters.maxDifficulty;
     }
+
+    if (filters.startDate) {
+      filtersToApply.startDate = filters.startDate.toISOString().split('T')[0];
+    }
+    if (filters.endDate) {
+      filtersToApply.endDate = filters.endDate.toISOString().split('T')[0];
+    }
     
-    // Solo incluir sortBy si no es el valor por defecto
     if (filters.sortBy && filters.sortBy !== 'newest') {
       filtersToApply.sortBy = filters.sortBy;
     }
@@ -126,6 +152,26 @@ export default function FilterModal({
     console.log('Enviando filtros aplicados:', filtersToApply);
     onApplyFilters(filtersToApply);
     onClose();
+  };
+
+  const handleClearAll = () => {
+    // Resetear a valores por defecto
+    const defaultFilters = {
+      courseId: null,
+      professorId: null,
+      minRating: 1,
+      maxRating: 5,
+      minDifficulty: 1,
+      maxDifficulty: 5,
+      startDate: null,
+      endDate: null,
+      sortBy: 'newest'
+    };
+    setFilters(defaultFilters);
+    setTempStartDate(null);
+    setTempEndDate(null);
+    // Enviar objeto vacío para indicar que no hay filtros
+    onApplyFilters({});
   };
 
   const handleRatingChange = (min, max) => {
@@ -144,6 +190,51 @@ export default function FilterModal({
     }));
   };
 
+  const handleStartDatePress = () => {
+    setTempStartDate(filters.startDate || new Date());
+    setShowStartDatePicker(true);
+  };
+
+  const handleEndDatePress = () => {
+    setTempEndDate(filters.endDate || new Date());
+    setShowEndDatePicker(true);
+  };
+
+  const handleStartDateChange = (event, selectedDate) => {
+    if (event.type === 'set' && selectedDate) {
+      setFilters(prev => ({
+        ...prev,
+        startDate: selectedDate
+      }));
+    }
+    setShowStartDatePicker(false);
+    setTempStartDate(null);
+  };
+
+  const handleEndDateChange = (event, selectedDate) => {
+    if (event.type === 'set' && selectedDate) {
+      setFilters(prev => ({
+        ...prev,
+        endDate: selectedDate
+      }));
+    }
+    setShowEndDatePicker(false);
+    setTempEndDate(null);
+  };
+
+  const clearStartDate = () => {
+    setFilters(prev => ({ ...prev, startDate: null }));
+  };
+
+  const clearEndDate = () => {
+    setFilters(prev => ({ ...prev, endDate: null }));
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    return date.toLocaleDateString('es-ES');
+  };
+
   return (
     <Modal
       visible={visible}
@@ -152,8 +243,23 @@ export default function FilterModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalContainer}>
-        {/* Header */}
+        {/* Header con botón Limpiar a la izquierda */}
         <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={handleClearAll} 
+            style={[
+              styles.clearButton,
+              !isFilterActive() && styles.clearButtonDisabled
+            ]}
+            disabled={!isFilterActive()}
+          >
+            <Text style={[
+              styles.clearButtonText,
+              !isFilterActive() && styles.clearButtonTextDisabled
+            ]}>
+              Limpiar
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.title}>Filtros de Búsqueda</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Text style={styles.closeIcon}>✕</Text>
@@ -161,7 +267,7 @@ export default function FilterModal({
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Filtro por Materia (solo en perfil de profesor) */}
+          {/* Filtro por Materia */}
           {context.professorId && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Materia</Text>
@@ -195,7 +301,7 @@ export default function FilterModal({
             </View>
           )}
 
-          {/* Filtro por Profesor (solo en perfil de materia) */}
+          {/* Filtro por Profesor */}
           {context.courseId && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Profesor</Text>
@@ -229,43 +335,79 @@ export default function FilterModal({
             </View>
           )}
 
-          {/* Filtro por Calificación con RangeSlider */}
+          {/* Filtro por Rango de Fechas */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Calificación ⭐</Text>
-            <View style={styles.sliderSection}>
-              <Text style={styles.sliderDescription}>
-                {filters.minRating === 1 && filters.maxRating === 5 
-                  ? 'Todas las calificaciones' 
-                  : `De ${filters.minRating} a ${filters.maxRating} estrellas`}
-              </Text>
-              <RangeSlider
-                min={1}
-                max={5}
-                initialLow={filters.minRating}
-                initialHigh={filters.maxRating}
-                onValueChange={handleRatingChange}
-                step={1}
-              />
+            <Text style={styles.sectionTitle}>Rango de Fechas</Text>
+            <View style={styles.dateSection}>
+              <View style={styles.dateRow}>
+                <View style={styles.dateInputContainer}>
+                  <Text style={styles.dateLabel}>Desde:</Text>
+                  <TouchableOpacity 
+                    style={styles.dateButton}
+                    onPress={handleStartDatePress}
+                  >
+                    <Text style={styles.dateButtonText}>
+                      {formatDate(filters.startDate)}
+                    </Text>
+                  </TouchableOpacity>
+                  {filters.startDate && (
+                    <TouchableOpacity onPress={clearStartDate} style={styles.clearDateButton}>
+                      <Text style={styles.clearDateText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                <View style={styles.dateInputContainer}>
+                  <Text style={styles.dateLabel}>Hasta:</Text>
+                  <TouchableOpacity 
+                    style={styles.dateButton}
+                    onPress={handleEndDatePress}
+                  >
+                    <Text style={styles.dateButtonText}>
+                      {formatDate(filters.endDate)}
+                    </Text>
+                  </TouchableOpacity>
+                  {filters.endDate && (
+                    <TouchableOpacity onPress={clearEndDate} style={styles.clearDateButton}>
+                      <Text style={styles.clearDateText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             </View>
           </View>
 
-          {/* Filtro por Dificultad con RangeSlider */}
+          {/* Filtro por Calificación */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Dificultad 📉</Text>
+            <Text style={styles.sectionTitle}>Calificación</Text>
             <View style={styles.sliderSection}>
-              <Text style={styles.sliderDescription}>
-                {filters.minDifficulty === 1 && filters.maxDifficulty === 5 
-                  ? 'Todos los niveles de dificultad' 
-                  : `De ${filters.minDifficulty} a ${filters.maxDifficulty}`}
-              </Text>
-              <RangeSlider
-                min={1}
-                max={5}
-                initialLow={filters.minDifficulty}
-                initialHigh={filters.maxDifficulty}
-                onValueChange={handleDifficultyChange}
-                step={1}
-              />
+              <View style={styles.sliderContainer}>
+                <RangeSlider
+                  min={1}
+                  max={5}
+                  initialLow={filters.minRating}
+                  initialHigh={filters.maxRating}
+                  onValueChange={handleRatingChange}
+                  step={1}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Filtro por Dificultad */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Dificultad</Text>
+            <View style={styles.sliderSection}>
+              <View style={styles.sliderContainer}>
+                <RangeSlider
+                  min={1}
+                  max={5}
+                  initialLow={filters.minDifficulty}
+                  initialHigh={filters.maxDifficulty}
+                  onValueChange={handleDifficultyChange}
+                  step={1}
+                />
+              </View>
             </View>
           </View>
 
@@ -314,6 +456,24 @@ export default function FilterModal({
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Date Pickers */}
+        {showStartDatePicker && (
+          <DateTimePicker
+            value={tempStartDate || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleStartDateChange}
+          />
+        )}
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={tempEndDate || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleEndDateChange}
+          />
+        )}
       </View>
     </Modal>
   );
@@ -335,6 +495,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FF8200',
+  },
+  clearButtonDisabled: {
+    backgroundColor: '#E9ECEF',
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  clearButtonTextDisabled: {
+    color: '#999',
   },
   title: {
     fontSize: 18,
@@ -389,8 +566,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionSelected: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF6B6B',
+    backgroundColor: '#FF8200',
+    borderColor: '#FF8200',
   },
   optionText: {
     fontSize: 14,
@@ -404,17 +581,62 @@ const styles = StyleSheet.create({
   },
   sliderSection: {
     backgroundColor: '#F8F9FA',
+    paddingHorizontal: 30,
+    padding: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    marginHorizontal: 15,
+  },
+  sliderContainer: {
+    marginHorizontal: 1,
+  },
+  dateSection: {
+    backgroundColor: '#F8F9FA',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
   },
-  sliderDescription: {
+  dateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  dateInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
-    textAlign: 'center',
-    marginBottom: 16,
+    marginRight: 8,
+    minWidth: 50,
+  },
+  dateButton: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  dateButtonText: {
+    fontSize: 14,
+    color: '#1A1A1A',
+    fontWeight: '500',
+  },
+  clearDateButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  clearDateText: {
+    fontSize: 14,
+    color: '#FF8200',
+    fontWeight: '600',
   },
   footer: {
     padding: 20,
@@ -423,7 +645,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   applyButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#FF8200',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
