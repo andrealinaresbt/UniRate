@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/NuevaResenaScreen.js
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  InputAccessoryView,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
@@ -24,15 +25,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ProfessorService } from '../services/professorService';
 import { ReviewService, updateReview, getReviewById } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
+const SCROLL_OFFSET = 120;
 
 const TAGS = [
   'Exigente',
-  'Claro',
-  'Justo',
-  'Proyectos',
-  'Mucho teórico',
+  'Explica claro',
+  'Corrige fuerte',
+  'Muchos proyectos',
+  'Muy teórico',
   'Abre debate',
-  'Poco práctico',
+  'Corrige rápido',
+  'Pocos parciales',
+  'Muchas evaluaciones',
 ];
 
 // Paleta
@@ -46,6 +50,34 @@ const COLORS = {
   white: '#FFFFFF',
   muted: '#8A93A2',
 };
+
+const ACCESSORY_ID = 'commentAccessoryBar';
+const ACC_SCORE   = 'acc_score';
+const ACC_DIFF    = 'acc_diff';
+const ACC_COMMENT = 'acc_comment';
+
+// Chips rápidos 1–5 para marcar calificación/dificultad
+function QuickScaleRow({ value, onSelect }) {
+  return (
+    <View style={styles.quickRow}>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const active = String(value) === String(n);
+        return (
+          <TouchableOpacity
+            key={n}
+            onPress={() => {
+              onSelect(String(n));
+              Keyboard.dismiss();
+            }}
+            style={[styles.quickChip, active && styles.quickChipActive]}
+          >
+            <Text style={[styles.quickChipText, active && styles.quickChipTextActive]}>{n}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
 
 export default function NuevaResenaScreen() {
   const navigation = useNavigation();
@@ -88,37 +120,50 @@ export default function NuevaResenaScreen() {
   const [profQuery, setProfQuery] = useState('');
   const [courseQuery, setCourseQuery] = useState('');
 
-  const VERIFY_SAVE = false;
+  // refs para scroll a campos
+  const scrollRef = useRef(null);
+  const anchors = useRef({}); // {puntuacionY, dificultadY, comentarioY}
 
-  // cargar catálogos
-  useEffect(() => {
-    (async () => {
-      try {
-        const [p, c] = await Promise.all([
-          ProfessorService.getAllProfessors(),
-          ReviewService.getAllCourses(),
-        ]);
-        if (p.success) {
-          // orden alfabético
-          const ordenadosP = (p.data || []).sort((a, b) =>
-            (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
-          );
-          setProfesores(ordenadosP);
-        }
-        if (c.success) {
-          // orden alfabético
-          const ordenadosC = (c.data || []).sort((a, b) =>
-            (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
-          );
-          setMaterias(ordenadosC);
-        }
-      } catch (_) {
-        Alert.alert('Error', 'No fue posible cargar los catálogos.');
-      } finally {
-        setLoading(false);
+  const VERIFY_SAVE = false;
+const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+useEffect(() => {
+  const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+  const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+
+  return () => {
+    showSub.remove();
+    hideSub.remove();
+  };
+}, []);
+
+// cargar catálogos
+useEffect(() => {
+  (async () => {
+    try {
+      const [p, c] = await Promise.all([
+        ProfessorService.getAllProfessors(),
+        ReviewService.getAllCourses(),
+      ]);
+      if (p.success) {
+        const ordenadosP = (p.data || []).sort((a, b) =>
+          (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+        );
+        setProfesores(ordenadosP);
       }
-    })();
-  }, []);
+      if (c.success) {
+        const ordenadosC = (c.data || []).sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
+        );
+        setMaterias(ordenadosC);
+      }
+    } catch (_) {
+      Alert.alert('Error', 'No fue posible cargar los catálogos.');
+    } finally {
+      setLoading(false);
+    }
+  })();
+}, []);
 
   // prellenado si venimos de perfil (y no estamos editando)
   useEffect(() => {
@@ -334,6 +379,17 @@ export default function NuevaResenaScreen() {
     );
   }
 
+  // helpers de scroll a anclas
+const scrollTo = (key, extra = 0) => {
+  const y = anchors.current[key] ?? 0;
+  const target = Math.max(y - (SCROLL_OFFSET + extra), 0);
+  // pequeño defer para asegurar que el teclado terminó de animar
+  requestAnimationFrame(() => {
+    scrollRef.current?.scrollTo({ y: target, animated: true });
+  });
+};
+
+
   // ----- UI con teclado cómodo y botón fijo -----
   return (
     <KeyboardAvoidingView
@@ -344,8 +400,9 @@ export default function NuevaResenaScreen() {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1 }}>
           <ScrollView
+            ref={scrollRef}
             style={styles.screen}
-            contentContainerStyle={[styles.content, { paddingBottom: 160 }]} // espacio para no tapar el final
+            contentContainerStyle={[styles.content, { paddingBottom: 60 }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
@@ -358,6 +415,7 @@ export default function NuevaResenaScreen() {
               onPress={() => {
                 setProfQuery('');
                 setOpenProfPicker(true);
+                Keyboard.dismiss();
               }}
             >
               <Text style={styles.selectText}>
@@ -375,6 +433,7 @@ export default function NuevaResenaScreen() {
               onPress={() => {
                 setCourseQuery('');
                 setOpenCoursePicker(true);
+                Keyboard.dismiss();
               }}
             >
               <Text style={styles.selectText}>
@@ -405,30 +464,65 @@ export default function NuevaResenaScreen() {
               />
             </View>
 
-            {/* Calificaciones */}
-            <Text style={styles.label}>Puntuación (1–5) *</Text>
-            <TextInput
-              style={styles.input}
-              value={calidad}
-              onChangeText={setCalidad}
-              placeholder="Ej: 4"
-              keyboardType="number-pad"
-              maxLength={1}
-              placeholderTextColor={COLORS.muted}
-              returnKeyType="done"
-            />
+            {/* Puntuación */}
+            <View
+              onLayout={(e) => (anchors.current.puntuacionY = e.nativeEvent.layout.y)}
+            >
+              <Text style={styles.label}>Puntuación (1–5) *</Text>
+              <TextInput
+                style={styles.input}
+                value={calidad}
+                onFocus={() => scrollTo('puntuacionY')}
+                onChangeText={(txt) => {
+                  // solo 1–5
+                  const clean = txt.replace(/[^0-9]/g, '').slice(0, 1);
+                  setCalidad(clean);
+                  const n = parseInt(clean, 10);
+                  if ([1, 2, 3, 4, 5].includes(n)) {
+                    Keyboard.dismiss();
+                  }
+                }}
+                placeholder="Ej: 4"
+                keyboardType="number-pad"
+                maxLength={1}
+                placeholderTextColor={COLORS.muted}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={Keyboard.dismiss}
+                inputAccessoryViewID={ACC_SCORE}
+              />
+              {/* Rápido: chips 1–5 */}
+              <QuickScaleRow value={calidad} onSelect={setCalidad} />
+            </View>
 
-            <Text style={styles.label}>Dificultad (1–5) *</Text>
-            <TextInput
-              style={styles.input}
-              value={dificultad}
-              onChangeText={setDificultad}
-              placeholder="Ej: 3"
-              keyboardType="number-pad"
-              maxLength={1}
-              placeholderTextColor={COLORS.muted}
-              returnKeyType="done"
-            />
+            {/* Dificultad */}
+            <View
+              onLayout={(e) => (anchors.current.dificultadY = e.nativeEvent.layout.y)}
+            >
+              <Text style={styles.label}>Dificultad (1–5) *</Text>
+              <TextInput
+                style={styles.input}
+                value={dificultad}
+                onFocus={() => scrollTo('dificultadY')}
+                onChangeText={(txt) => {
+                  const clean = txt.replace(/[^0-9]/g, '').slice(0, 1);
+                  setDificultad(clean);
+                  const n = parseInt(clean, 10);
+                  if ([1, 2, 3, 4, 5].includes(n)) {
+                    Keyboard.dismiss();
+                  }
+                }}
+                placeholder="Ej: 3"
+                keyboardType="number-pad"
+                maxLength={1}
+                placeholderTextColor={COLORS.muted}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={Keyboard.dismiss}
+                inputAccessoryViewID={ACC_DIFF}
+              />
+              <QuickScaleRow value={dificultad} onSelect={setDificultad} />
+            </View>
 
             {/* Volvería */}
             <View style={styles.row}>
@@ -442,19 +536,27 @@ export default function NuevaResenaScreen() {
             </View>
 
             {/* Comentario */}
-            <Text style={styles.label}>Comentario (máx. 300)</Text>
-            <TextInput
-              style={[styles.input, { minHeight: 90 }]}
-              value={comentario}
-              onChangeText={setComentario}
-              placeholder="Escribe tu experiencia…"
-              multiline
-              maxLength={300}
-              placeholderTextColor={COLORS.muted}
-              textAlignVertical="top"
-              returnKeyType="default"
-            />
-            <Text style={styles.helper}>{comentario.length}/300 caracteres</Text>
+            <View
+              onLayout={(e) => (anchors.current.comentarioY = e.nativeEvent.layout.y)}
+            >
+              <Text style={styles.label}>Comentario (máx. 300)</Text>
+              <TextInput
+                style={[styles.input, { minHeight: 90 }]}
+                value={comentario}
+                onFocus={() => scrollTo('comentarioY',20)}
+                onChangeText={setComentario}
+                placeholder="Escribe tu experiencia…"
+                multiline
+                maxLength={300}
+                placeholderTextColor={COLORS.muted}
+                textAlignVertical="top"
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={Keyboard.dismiss}
+                inputAccessoryViewID={ACC_COMMENT} 
+              />
+              <Text style={styles.helper}>{comentario.length}/300 caracteres</Text>
+            </View>
 
             {/* Etiquetas */}
             <Text style={styles.label}>Etiquetas (máx. 3)</Text>
@@ -465,7 +567,10 @@ export default function NuevaResenaScreen() {
                   <TouchableOpacity
                     key={tag}
                     style={[styles.tag, active && styles.tagActive]}
-                    onPress={() => toggleEtiqueta(tag)}
+                    onPress={() => {
+                      toggleEtiqueta(tag);
+                      Keyboard.dismiss();
+                    }}
                   >
                     <Text style={[styles.tagText, active && styles.tagTextActive]}>
                       {tag}
@@ -474,17 +579,14 @@ export default function NuevaResenaScreen() {
                 );
               })}
             </View>
-
-            {/* Espaciador para que el último campo no quede tapado */}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-
-          {/* Footer fijo con botón */}
-          <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+            {/* Botón EN EL CONTENIDO (no fijo) */}
             <TouchableOpacity
               style={[styles.button, submitting && { opacity: 0.6 }]}
               disabled={submitting}
-              onPress={handleSubmit}
+              onPress={() => {
+                Keyboard.dismiss();
+                handleSubmit();
+              }}
             >
               {submitting ? (
                 <ActivityIndicator color={COLORS.white} />
@@ -501,7 +603,15 @@ export default function NuevaResenaScreen() {
                 {status === 'error' && '⚠️ Revisa los datos e inténtalo de nuevo'}
               </Text>
             )}
-          </View>
+
+            {/* Espacio final para que no quede pegado al borde */}
+            <View style={{ height: 24 }} />
+
+
+            {/* Espaciador para que el último campo no quede tapado */}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+
 
           {/* Picker Profesor */}
           <Modal
@@ -536,6 +646,7 @@ export default function NuevaResenaScreen() {
                         onPress={() => {
                           setProfesorId(item.id);
                           setOpenProfPicker(false);
+                          Keyboard.dismiss();
                         }}
                       >
                         <Text style={styles.modalItemText}>{item.full_name}</Text>
@@ -580,6 +691,7 @@ export default function NuevaResenaScreen() {
                         onPress={() => {
                           setMateriaId(item.id);
                           setOpenCoursePicker(false);
+                          Keyboard.dismiss();
                         }}
                       >
                         <Text style={styles.modalItemText}>
@@ -592,6 +704,36 @@ export default function NuevaResenaScreen() {
               </View>
             </View>
           </Modal>
+        {Platform.OS === 'ios' && (
+          <>
+            <InputAccessoryView nativeID={ACC_SCORE}>
+              <View style={styles.accessoryBar}>
+                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                </TouchableOpacity>
+              </View>
+            </InputAccessoryView>
+
+            <InputAccessoryView nativeID={ACC_DIFF}>
+              <View style={styles.accessoryBar}>
+                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                </TouchableOpacity>
+              </View>
+            </InputAccessoryView>
+
+            <InputAccessoryView nativeID={ACC_COMMENT}>
+              <View style={styles.accessoryBar}>
+                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                </TouchableOpacity>
+              </View>
+            </InputAccessoryView>
+          </>
+        )}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -622,7 +764,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   row: {
     flexDirection: 'row',
@@ -634,7 +776,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     alignSelf: 'flex-end',
-    marginTop: -8,
+    marginTop: -4,
     marginBottom: 8,
   },
   select: {
@@ -648,6 +790,37 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   selectText: { color: COLORS.text },
+
+  // Chips 1–5
+  quickRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  quickChip: {
+    minWidth: 40,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  quickChipActive: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+  },
+  quickChipText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  quickChipTextActive: {
+    color: COLORS.white,
+  },
+
   tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   tag: {
     paddingHorizontal: 12,
@@ -672,7 +845,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
-    // sombra ligera
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -733,4 +905,30 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   modalItemText: { fontSize: 14, color: COLORS.text },
+  accessoryBar: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  backgroundColor: '#F2F3F5',
+  borderTopWidth: StyleSheet.hairlineWidth,
+  borderTopColor: '#D6DAE1',
+},
+accessoryHint: {
+  fontSize: 13,
+  color: '#6B7280',
+},
+accessoryBtn: {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 8,
+  backgroundColor: COLORS.accent,
+},
+accessoryBtnText: {
+  color: '#fff',
+  fontWeight: '600',
+  fontSize: 14,
+},
+
 });
