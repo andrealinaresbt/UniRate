@@ -7,7 +7,8 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Platform
+  Platform,
+  StatusBar
 } from 'react-native';
 import { filterService } from '../services/filterService';
 import RangeSlider from './RangeSlider';
@@ -62,8 +63,6 @@ export default function FilterModal({
     if (visible) {
       loadFilterOptions();
       
-      // Solo sincronizar con currentFilters cuando el modal se abre
-      // pero mantener los valores actuales si ya hay filtros aplicados
       if (Object.keys(currentFilters).length > 0) {
         const syncedFilters = {
           courseId: currentFilters.courseId || null,
@@ -79,8 +78,6 @@ export default function FilterModal({
         
         setFilters(syncedFilters);
       }
-      // Si no hay currentFilters, mantener el estado actual de filters
-      // para que no se resetee a valores por defecto
       
       setTempStartDate(null);
       setTempEndDate(null);
@@ -161,7 +158,6 @@ export default function FilterModal({
   };
 
   const handleClearAll = () => {
-    // Resetear a valores por defecto
     const defaultFilters = {
       courseId: null,
       professorId: null,
@@ -176,7 +172,6 @@ export default function FilterModal({
     setFilters(defaultFilters);
     setTempStartDate(null);
     setTempEndDate(null);
-    // Enviar objeto vacío para indicar que no hay filtros
     onApplyFilters({});
   };
 
@@ -245,9 +240,18 @@ export default function FilterModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="overFullScreen" // Cambiado a overFullScreen
       onRequestClose={onClose}
+      statusBarTranslucent={true}
+      supportedOrientations={['portrait']}
     >
+      {/* StatusBar específico para el modal */}
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="#ffffff" 
+        translucent={true}
+      />
+      
       <View style={styles.modalContainer}>
         {/* Header con botón Limpiar a la izquierda */}
         <View style={styles.header}>
@@ -353,7 +357,7 @@ export default function FilterModal({
                     onPress={handleStartDatePress}
                   >
                     <Text style={styles.dateButtonText}>
-                      {formatDate(filters.startDate)}
+                      {formatDate(filters.startDate) || ''}
                     </Text>
                   </TouchableOpacity>
                   {filters.startDate && (
@@ -370,7 +374,7 @@ export default function FilterModal({
                     onPress={handleEndDatePress}
                   >
                     <Text style={styles.dateButtonText}>
-                      {formatDate(filters.endDate)}
+                      {formatDate(filters.endDate) || ''}
                     </Text>
                   </TouchableOpacity>
                   {filters.endDate && (
@@ -489,9 +493,8 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    marginTop: 50,
+    // Padding top para respetar la status bar
+    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight,
   },
   header: {
     flexDirection: 'row',
