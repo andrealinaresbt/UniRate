@@ -287,8 +287,21 @@ export default function NuevaResenaScreen() {
       navigation.goBack();
     } else {
       setStatus('error');
-      Alert.alert('Error', res?.error || 'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.');
+      let friendlyMsg = 'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.';
+
+      const errMsg = (res?.error || '').toLowerCase();
+
+      if (
+        errMsg.includes('duplicate') ||
+        errMsg.includes('unique constraint') ||
+        errMsg.includes('already exists')
+      ) {
+        friendlyMsg = 'Ya has publicado una reseña para este profesor y materia. Solo se permite una reseña por combinación.';
+      }
+
+      Alert.alert('⚠️ No se pudo guardar', friendlyMsg);
     }
+
   };
 
 
