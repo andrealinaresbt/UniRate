@@ -237,7 +237,7 @@ export default function FilterModal({
   };
 
   const formatDate = (date) => {
-    if (!date) return 'Seleccionar fecha';
+    if (!date) return '';
     return date.toLocaleDateString('es-ES');
   };
 
