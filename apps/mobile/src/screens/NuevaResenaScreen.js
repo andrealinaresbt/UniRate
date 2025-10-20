@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/NuevaResenaScreen.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -47,7 +47,7 @@ export default function NuevaResenaScreen() {
   const route = useRoute();
   const editReview = route.params?.editReview;
 
-  // ========= NUEVO: origen y params para prellenado =========
+  // ========= Origen y params para prellenado =========
   const source = route.params?.source ?? null; // 'ProfessorProfile' | 'CourseProfile' | null
   const prefillType = route.params?.prefillType ?? null; // 'professor' | 'course' | null
   const prefillProfessorId = route.params?.professorId ?? null;
@@ -78,7 +78,11 @@ export default function NuevaResenaScreen() {
   const [openProfPicker, setOpenProfPicker] = useState(false);
   const [openCoursePicker, setOpenCoursePicker] = useState(false);
 
-  // Developer helper: when true, show a verification Alert after saving (defaults to false)
+  // NUEVO: queries de búsqueda en modales
+  const [profQuery, setProfQuery] = useState('');
+  const [courseQuery, setCourseQuery] = useState('');
+
+  // Developer helper
   const VERIFY_SAVE = false;
 
   // cargar catálogos
@@ -89,8 +93,21 @@ export default function NuevaResenaScreen() {
           ProfessorService.getAllProfessors(),
           ReviewService.getAllCourses(),
         ]);
-        if (p.success) setProfesores(p.data || []);
-        if (c.success) setMaterias(c.data || []);
+
+      if (p.success) {
+        const ordenadosP = (p.data || []).sort((a, b) =>
+          (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+        );
+        setProfesores(ordenadosP);
+      }
+
+      if (c.success) {
+        const ordenadosC = (c.data || []).sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
+        );
+        setMaterias(ordenadosC);
+      }
+
       } catch (_) {
         Alert.alert('Error', 'No fue posible cargar los catálogos.');
       } finally {
@@ -99,7 +116,7 @@ export default function NuevaResenaScreen() {
     })();
   }, []);
 
-  // ========= NUEVO: aplicar prellenado si venimos de perfil (y no estamos editando)
+  // aplicar prellenado si venimos de perfil (y no estamos editando)
   useEffect(() => {
     if (editReview) return;
     if (!allowPrefill) return;
@@ -125,8 +142,7 @@ export default function NuevaResenaScreen() {
 
   // Cargar borrador guardado (si lo hay)
   useEffect(() => {
-    // If we're editing an existing review, don't load a saved draft (it may overwrite edit fields)
-    // ========= NUEVO: si hay prellenado desde perfil, NO sobreescribir con borrador
+    // No cargar borrador si hay edición o prellenado desde perfil
     if (editReview || allowPrefill) return;
     (async () => {
       try {
@@ -149,8 +165,7 @@ export default function NuevaResenaScreen() {
 
   // Autosave borrador
   useEffect(() => {
-    // Don't autosave when editing an existing review — editing should not overwrite the global draft
-    if (editReview) return;
+    if (editReview) return; // no guardar borrador en modo edición
     const payload = {
       profesorId,
       materiaId,
@@ -220,17 +235,16 @@ export default function NuevaResenaScreen() {
       dificultad: parseInt(dificultad, 10),
       volveria,
       comentario,
-      etiquetas, // text[] en Supabase
-      // duplicate english fields used by some screens/schemas to keep both views consistent
+      etiquetas,
+      // fields alternos usados en otras pantallas
       score: parseInt(calidad, 10),
-      // teacher-specific score column used by professor pages
       score_teacher: parseInt(calidad, 10),
       difficulty: parseInt(dificultad, 10),
       comment: comentario,
       would_take_again: volveria,
     };
 
-    // helper: avoid hanging indefinitely if network/Supabase stalls
+    // helper timeout
     const withTimeout = (p, ms = 15000) =>
       Promise.race([
         p,
@@ -240,7 +254,6 @@ export default function NuevaResenaScreen() {
     let res;
     try {
       if (editReview?.id) {
-        // update (use named updateReview export)
         res = await withTimeout(updateReview(editReview.id, payload), 15000);
       } else {
         res = await withTimeout(ReviewService.createReview(payload), 15000);
@@ -255,10 +268,8 @@ export default function NuevaResenaScreen() {
       setStatus('exito');
       await AsyncStorage.removeItem('draft_review');
       Alert.alert('¡Listo!', 'Reseña publicada con éxito.');
-      // emit event so lists can refresh
       if (editReview?.id) EventBus.emit('review:updated', { id: editReview.id });
       else EventBus.emit('review:created');
-      // Verify saved record (helpful for debugging RLS or payload mismatches)
       if (editReview?.id) {
         try {
           const check = await getReviewById(editReview.id);
@@ -280,6 +291,30 @@ export default function NuevaResenaScreen() {
     }
   };
 
+
+  const filteredProfesores = useMemo(() => {
+    const q = profQuery.trim().toLowerCase();
+    const lista = profesores.filter((p) =>
+      (p.full_name || '').toLowerCase().includes(q)
+    );
+    return lista.sort((a, b) =>
+      (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+    );
+  }, [profQuery, profesores]);
+
+  const filteredMaterias = useMemo(() => {
+    const q = courseQuery.trim().toLowerCase();
+    const lista = materias.filter((m) => {
+      const name = (m.name || '').toLowerCase();
+      const code = (m.code || '').toLowerCase();
+      return name.includes(q) || code.includes(q);
+    });
+    return lista.sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
+    );
+  }, [courseQuery, materias]);
+
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -297,7 +332,10 @@ export default function NuevaResenaScreen() {
       <Text style={styles.label}>Profesor *</Text>
       <TouchableOpacity
         style={styles.select}
-        onPress={() => setOpenProfPicker(true)}
+        onPress={() => {
+          setProfQuery('');
+          setOpenProfPicker(true);
+        }}
       >
         <Text style={styles.selectText}>
           {profesorId
@@ -311,7 +349,10 @@ export default function NuevaResenaScreen() {
       <Text style={styles.label}>Materia *</Text>
       <TouchableOpacity
         style={styles.select}
-        onPress={() => setOpenCoursePicker(true)}
+        onPress={() => {
+          setCourseQuery('');
+          setOpenCoursePicker(true);
+        }}
       >
         <Text style={styles.selectText}>
           {materiaId
@@ -439,21 +480,37 @@ export default function NuevaResenaScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Selecciona profesor</Text>
-            <FlatList
-              data={profesores}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setProfesorId(item.id);
-                    setOpenProfPicker(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{item.full_name}</Text>
-                </TouchableOpacity>
-              )}
+
+            {/* NUEVO: Buscador */}
+            <TextInput
+              style={styles.searchInput}
+              value={profQuery}
+              onChangeText={setProfQuery}
+              placeholder="Buscar profesor…"
+              placeholderTextColor={COLORS.muted}
+              autoFocus
             />
+
+            {filteredProfesores.length === 0 ? (
+              <Text style={styles.emptyText}>No hay resultados</Text>
+            ) : (
+              <FlatList
+                data={filteredProfesores}
+                keyExtractor={(item) => String(item.id)}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setProfesorId(item.id);
+                      setOpenProfPicker(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{item.full_name}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -468,23 +525,39 @@ export default function NuevaResenaScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Selecciona materia</Text>
-            <FlatList
-              data={materias}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setMateriaId(item.id);
-                    setOpenCoursePicker(false);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>
-                    {item.name} {item.code ? `(${item.code})` : ''}
-                  </Text>
-                </TouchableOpacity>
-              )}
+
+            {/* NUEVO: Buscador */}
+            <TextInput
+              style={styles.searchInput}
+              value={courseQuery}
+              onChangeText={setCourseQuery}
+              placeholder="Buscar materia o código…"
+              placeholderTextColor={COLORS.muted}
+              autoFocus
             />
+
+            {filteredMaterias.length === 0 ? (
+              <Text style={styles.emptyText}>No hay resultados</Text>
+            ) : (
+              <FlatList
+                data={filteredMaterias}
+                keyExtractor={(item) => String(item.id)}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setMateriaId(item.id);
+                      setOpenCoursePicker(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>
+                      {item.name} {item.code ? `(${item.code})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -562,14 +635,33 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: COLORS.white, fontWeight: '700' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.bg },
+
+  // Modales
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     padding: 20,
   },
-  modalCard: { backgroundColor: COLORS.white, borderRadius: 16, maxHeight: '70%', padding: 12 },
+  modalCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    maxHeight: '80%',
+    padding: 12,
+  },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: COLORS.primary },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    backgroundColor: COLORS.bg,
+    color: COLORS.text,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  emptyText: { textAlign: 'center', color: COLORS.muted, paddingVertical: 16 },
+
   modalItem: {
     paddingVertical: 12,
     paddingHorizontal: 8,
