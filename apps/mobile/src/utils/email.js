@@ -17,7 +17,7 @@ export function validateEmailDomain(email, allowedDomains = []) {
 // Dominio único permitido
 export function isUnimetCorreoEmail(email) {
   return validateEmailFormat(email) &&
-         validateEmailDomain(email, ['correo.unimet.edu.ve']);
+         validateEmailDomain(email, ['correo.unimet.edu.ve', 'unimet.edu.ve']);
 }
 
 export function validatePassword(password) {

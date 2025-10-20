@@ -4,7 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
-import { login, sendResetEmail, signInWithGoogle } from '../services/AuthService';
+import { login, sendResetEmail } from '../services/AuthService';
 
 import { isUnimetCorreoEmail } from '../utils/email'
 
@@ -55,12 +55,6 @@ export default function LoginScreen({ navigation }) {
         Alert.alert('Error', err.message || 'No se pudo enviar el correo de recuperación.');
       });
   }
-  // dentro del componente
-function onGoogle() {
-  if (busy) return;
-  signInWithGoogle();
-}
-
 
   return (
     <View style={{ flex: 1 }}>
@@ -96,12 +90,6 @@ function onGoogle() {
         <TouchableOpacity style={[s.btn, busy && s.btnDis]} onPress={onLogin} disabled={busy}>
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Entrar</Text>}
         </TouchableOpacity>
-
-        {/* botón Google */}
-<TouchableOpacity style={[s.btnGoogle, busy && s.btnDis]} onPress={onGoogle} disabled={busy}>
-  <Text style={s.btnGoogleTxt}>Continuar con Google (Soon)</Text>
-</TouchableOpacity>
-
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
