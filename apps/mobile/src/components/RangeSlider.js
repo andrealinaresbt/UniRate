@@ -1,5 +1,5 @@
 // components/RangeSlider.js
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // Añade useEffect
 import {
   View,
   Text,
@@ -24,6 +24,12 @@ export default function RangeSlider({
   const lowThumbRef = useRef(null);
   const highThumbRef = useRef(null);
   const [activeThumb, setActiveThumb] = useState(null);
+
+  // Añade este useEffect para sincronizar con las props
+  useEffect(() => {
+    setLowValue(initialLow);
+    setHighValue(initialHigh);
+  }, [initialLow, initialHigh]);
 
   const calculateValueFromPosition = (xPosition) => {
     if (sliderWidth === 0) return min;

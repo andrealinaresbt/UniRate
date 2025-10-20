@@ -62,20 +62,26 @@ export default function FilterModal({
     if (visible) {
       loadFilterOptions();
       
-      // Siempre sincronizar con currentFilters cuando el modal se abre
-      const syncedFilters = {
-        courseId: currentFilters.courseId || null,
-        professorId: currentFilters.professorId || null,
-        minRating: currentFilters.minRating !== undefined ? currentFilters.minRating : 1,
-        maxRating: currentFilters.maxRating !== undefined ? currentFilters.maxRating : 5,
-        minDifficulty: currentFilters.minDifficulty !== undefined ? currentFilters.minDifficulty : 1,
-        maxDifficulty: currentFilters.maxDifficulty !== undefined ? currentFilters.maxDifficulty : 5,
-        startDate: currentFilters.startDate ? new Date(currentFilters.startDate) : null,
-        endDate: currentFilters.endDate ? new Date(currentFilters.endDate) : null,
-        sortBy: currentFilters.sortBy || 'newest',
-      };
+      // Solo sincronizar con currentFilters cuando el modal se abre
+      // pero mantener los valores actuales si ya hay filtros aplicados
+      if (Object.keys(currentFilters).length > 0) {
+        const syncedFilters = {
+          courseId: currentFilters.courseId || null,
+          professorId: currentFilters.professorId || null,
+          minRating: currentFilters.minRating !== undefined ? currentFilters.minRating : 1,
+          maxRating: currentFilters.maxRating !== undefined ? currentFilters.maxRating : 5,
+          minDifficulty: currentFilters.minDifficulty !== undefined ? currentFilters.minDifficulty : 1,
+          maxDifficulty: currentFilters.maxDifficulty !== undefined ? currentFilters.maxDifficulty : 5,
+          startDate: currentFilters.startDate ? new Date(currentFilters.startDate) : null,
+          endDate: currentFilters.endDate ? new Date(currentFilters.endDate) : null,
+          sortBy: currentFilters.sortBy || 'newest',
+        };
+        
+        setFilters(syncedFilters);
+      }
+      // Si no hay currentFilters, mantener el estado actual de filters
+      // para que no se resetee a valores por defecto
       
-      setFilters(syncedFilters);
       setTempStartDate(null);
       setTempEndDate(null);
     }
@@ -231,7 +237,7 @@ export default function FilterModal({
   };
 
   const formatDate = (date) => {
-    if (!date) return '';
+    if (!date) return 'Seleccionar fecha';
     return date.toLocaleDateString('es-ES');
   };
 

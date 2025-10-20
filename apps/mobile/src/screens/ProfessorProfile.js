@@ -220,8 +220,8 @@ export default function ProfessorProfile({ navigation }) {
   };
 
   const handleClearFilters = () => {
-    // Limpiar completamente todos los estados de filtros
-    setFilters({
+    // Resetear a valores por defecto explícitamente
+    const defaultFilters = {
       courseId: null,
       professorId: null,
       minRating: 1,
@@ -231,9 +231,11 @@ export default function ProfessorProfile({ navigation }) {
       startDate: null,
       endDate: null,
       sortBy: 'newest'
-    });
+    };
+    
+    setFilters(defaultFilters);
     setAppliedFilters({});
-    setFilterModalVisible(false);
+    setFilterModalVisible(false)
     
     // Forzar mostrar todas las reseñas
     const finalReviews = selectedCourse
@@ -439,8 +441,8 @@ export default function ProfessorProfile({ navigation }) {
       </View>
 
       {/* Modal de Filtros */}
-      <FilterModal
-      key={JSON.stringify(filters)} // Esto fuerza el remount cuando filters cambia
+    <FilterModal
+      key={`filter-modal-${JSON.stringify(filters)}`}
       visible={filterModalVisible}
       onClose={() => setFilterModalVisible(false)}
       onApplyFilters={handleApplyFilters}
