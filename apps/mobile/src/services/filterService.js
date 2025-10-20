@@ -49,11 +49,13 @@ export const filterService = {
     }
     // Filtro por fecha
     if (filters.startDate) {
-    query = query.gte('created_at', `${filters.startDate}T00:00:00+00:00`);
+      const startDateTime = new Date(filters.startDate + 'T00:00:00.000Z');
+      query = query.gte('created_at', startDateTime.toISOString());
     }
 
     if (filters.endDate) {
-    query = query.lte('created_at', `${filters.endDate}T23:59:59+00:00`);
+      const endDateTime = new Date(filters.endDate + 'T23:59:59.999Z');
+      query = query.lte('created_at', endDateTime.toISOString());
     }
 
     // Ordenar
