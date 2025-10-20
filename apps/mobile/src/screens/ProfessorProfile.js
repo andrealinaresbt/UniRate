@@ -63,7 +63,7 @@ export default function ProfessorProfile({ navigation }) {
     refetch,
   } = useProfessorDetails(professorId);
 
-  // ---- FIX: estabilizar refetch para usarlo en efectos/handlers sin re-suscribir
+  //estabilizar refetch para usarlo en efectos/handlers sin re-suscribir
   const refetchRef = useRef(refetch);
   useEffect(() => {
     refetchRef.current = refetch;
@@ -96,7 +96,6 @@ export default function ProfessorProfile({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, professorId]);
 
-  // ---- FIX: suscribirse a EventBus SOLO una vez
   useEffect(() => {
     const onUpdated = () => refetchRef.current?.();
     const onDeleted = () => refetchRef.current?.();
@@ -108,7 +107,6 @@ export default function ProfessorProfile({ navigation }) {
     };
   }, []);
 
-  // ---- FIX: Refetch SOLO cuando la pantalla entra en foco (una vez por foco)
   useEffect(() => {
     if (isFocused) {
       refetchRef.current?.();
@@ -181,11 +179,9 @@ export default function ProfessorProfile({ navigation }) {
   };
 
   const applyFilters = async () => {
-    console.log('Aplicando filtros:', filters);
     
     // Si filters está vacío, limpiar todo
     if (!filters || Object.keys(filters).length === 0) {
-      console.log('No hay filtros, mostrando todas las reseñas');
       const finalReviews = selectedCourse
         ? reviews.filter((r) => r.course_id === selectedCourse)
         : reviews;
@@ -194,7 +190,7 @@ export default function ProfessorProfile({ navigation }) {
       return;
     }
     
-    // Limpiar filtros - eliminar propiedades con valores null/undefined o por defecto
+    // Limpiar filtros
     const cleanFilters = {};
     Object.keys(filters).forEach(key => {
       const value = filters[key];
@@ -225,11 +221,10 @@ export default function ProfessorProfile({ navigation }) {
       }
     });
 
-    console.log('Filtros limpios:', cleanFilters);
+    
 
     // Si no hay filtros activos después de limpiar
     if (Object.keys(cleanFilters).length === 0) {
-      console.log('No hay filtros activos, mostrando todas las reseñas');
       const finalReviews = selectedCourse
         ? reviews.filter((r) => r.course_id === selectedCourse)
         : reviews;
@@ -239,12 +234,10 @@ export default function ProfessorProfile({ navigation }) {
     }
 
     try {
-      console.log('Llamando a filterService con:', cleanFilters);
       const filtered = await filterService.getFilteredReviews(cleanFilters, {
         professorId: professorId
       });
       
-      console.log('Resultados filtrados:', filtered);
       setFilteredReviews(filtered);
       setAppliedFilters(cleanFilters);
     } catch (error) {
@@ -339,7 +332,6 @@ export default function ProfessorProfile({ navigation }) {
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
-      <BackHeader onBack={() => navigation.goBack()} />
 
       {/* Header azul con corazón */}
       <View style={{ backgroundColor: COLORS.resolutionBlue }}>

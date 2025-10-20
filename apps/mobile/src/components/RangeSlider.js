@@ -25,7 +25,6 @@ export default function RangeSlider({
   const highThumbRef = useRef(null);
   const [activeThumb, setActiveThumb] = useState(null);
 
-  // Añade este useEffect para sincronizar con las props
   useEffect(() => {
     setLowValue(initialLow);
     setHighValue(initialHigh);
@@ -40,7 +39,7 @@ export default function RangeSlider({
   };
 
   const updateValues = (newLow, newHigh) => {
-    // CORREGIDO: Asegurar que low nunca sea mayor que high y viceversa
+    // Asegurar que low nunca sea mayor que high y viceversa
     let clampedLow = Math.min(Math.max(min, newLow), max);
     let clampedHigh = Math.max(Math.min(max, newHigh), min);
     

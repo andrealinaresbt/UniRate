@@ -50,13 +50,11 @@ export default function CourseProfile({ navigation }) {
 
   // ========= Hook de datos de la materia =========
   const {
-    course,            // { id, name, ... }
-    reviews,           // array de reseñas
-    avgRating,         // número
-    avgDifficulty,     // número
-    wouldTakeAgain,    // porcentaje
-    topTags,           // array de strings (opcional)
-    professors,        // array de profesores que dictan esta materia (opcional)
+    course,
+    reviews,
+    professorsAggregated, 
+    avgSatisfaccion,      
+    avgDificultad,        
     loading,
     error,
     refetch,
@@ -67,13 +65,13 @@ export default function CourseProfile({ navigation }) {
   const [favoriteId, setFavoriteId] = useState(null);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   
-  // Estados para filtros - Misma lógica que ProfessorProfile
+  // Estados para filtros
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState({});
   const [filteredReviews, setFilteredReviews] = useState([]);
   const [appliedFilters, setAppliedFilters] = useState({});
 
-  // Stabilize refetch (misma técnica que en ProfessorProfile)
+  // Stabilize refetch
   const refetchRef = useRef(refetch);
   useEffect(() => {
     refetchRef.current = refetch;
@@ -105,7 +103,7 @@ export default function CourseProfile({ navigation }) {
     }
   }, [isFocused]);
 
-  // Aplicar filtros cuando cambian - Misma lógica que ProfessorProfile
+  // Aplicar filtros cuando cambian
   useEffect(() => {
     applyFilters();
   }, [reviews, filters, selectedProfessor]);
@@ -163,13 +161,11 @@ export default function CourseProfile({ navigation }) {
     }
   };
 
-  // Misma lógica de applyFilters que ProfessorProfile
   const applyFilters = async () => {
-    console.log('Aplicando filtros en CourseProfile:', filters);
     
     // Si filters está vacío, limpiar todo
     if (!filters || Object.keys(filters).length === 0) {
-      console.log('No hay filtros, mostrando todas las reseñas');
+      
       const finalReviews = selectedProfessor
         ? reviews.filter((r) => r.professor_id === selectedProfessor)
         : reviews;
@@ -204,11 +200,9 @@ export default function CourseProfile({ navigation }) {
       }
     });
 
-    console.log('Filtros limpios en CourseProfile:', cleanFilters);
 
     // Si no hay filtros activos después de limpiar
     if (Object.keys(cleanFilters).length === 0) {
-      console.log('No hay filtros activos, mostrando todas las reseñas');
       const finalReviews = selectedProfessor
         ? reviews.filter((r) => r.professor_id === selectedProfessor)
         : reviews;
@@ -218,12 +212,10 @@ export default function CourseProfile({ navigation }) {
     }
 
     try {
-      console.log('Llamando a filterService desde CourseProfile con:', cleanFilters);
       const filtered = await filterService.getFilteredReviews(cleanFilters, {
         courseId: courseId
       });
       
-      console.log('Resultados filtrados en CourseProfile:', filtered);
       setFilteredReviews(filtered);
       setAppliedFilters(cleanFilters);
     } catch (error) {
@@ -323,11 +315,10 @@ export default function CourseProfile({ navigation }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <SafeAreaView style={{ backgroundColor: COLORS.resolutionBlue }} />
-      <BackHeader onBack={() => navigation.goBack()} />
+      <SafeAreaView style={{ backgroundColor: COLORS.utOrange }} />
       
-      {/* Header azul con corazón */}
-      <View style={{ backgroundColor: COLORS.resolutionBlue }}>
+      {/* Header con corazón */}
+      <View style={{ backgroundColor: COLORS.utOrange }}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Text style={styles.courseTitle}>{courseName}</Text>
@@ -353,55 +344,38 @@ export default function CourseProfile({ navigation }) {
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>⭐ Calificación</Text>
-              <Text style={styles.statValue}>{avgRating ?? "N/A"}</Text>
+              <Text style={styles.statValue}>{avgSatisfaccion ?? "N/A"}</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>📉 Dificultad</Text>
-              <Text style={styles.statValue}>{avgDifficulty ?? "N/A"}</Text>
+              <Text style={styles.statValue}>{avgDificultad ?? "N/A"}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statLabel}>🔁 Volverían</Text>
-              <Text style={styles.statValue}>{wouldTakeAgain ?? "N/A"}%</Text>
+              <Text style={styles.statLabel}>📊 Total reseñas</Text>
+              <Text style={styles.statValue}>{reviews.length}</Text>
             </View>
           </View>
 
-          {/* Etiquetas más frecuentes (opcional) */}
-          {topTags && topTags.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>Etiquetas más frecuentes</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 20 }}>
-                {topTags.map((tag, i) => (
-                  <View key={i} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-
-          {/* Profesores que dictan la materia */}
-          {Array.isArray(professors) && professors.length > 0 && (
+          {/* SECCIÓN DE PROFESORES - CORREGIDA */}
+          {Array.isArray(professorsAggregated) && professorsAggregated.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Profesores</Text>
               <FlatList
-                data={professors}
-                keyExtractor={(item, index) => String(item.id || index)}
+                data={professorsAggregated}
+                keyExtractor={(item, index) => String(item.professor_id || index)}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={{ marginBottom: 20 }}
                 renderItem={({ item }) => (
                   <SearchResultItem
                     item={{
-                      full_name: item.full_name,
-                      avg_score: item.avg_score,
-                      review_count: item.review_count,
+                      full_name: item.nombre,
+                      avg_score: item.avgRating,
+                      review_count: item.reviewsCount,
                       type: 'professor',
                     }}
                     onPress={() =>
-                      navigation.navigate('ProfessorProfile', {
-                        professorId: item.id,
-                        professorName: item.full_name,
-                      })
+                      setSelectedProfessor(selectedProfessor === item.professor_id ? null : item.professor_id)
                     }
                   />
                 )}
@@ -409,7 +383,7 @@ export default function CourseProfile({ navigation }) {
             </>
           )}
 
-          {/* Sección de Reseñas con Botón de Filtros - Misma lógica que ProfessorProfile */}
+          {/* Sección de Reseñas con Botón de Filtros */}
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionTitle}>Reseñas</Text>
             <TouchableOpacity 
@@ -422,7 +396,7 @@ export default function CourseProfile({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Mostrar filtros activos - Misma lógica que ProfessorProfile */}
+          {/* Mostrar filtros activos */}
           {getActiveFiltersCount() > 0 && (
             <View style={styles.activeFilters}>
               <Text style={styles.activeFiltersText}>
@@ -453,11 +427,13 @@ export default function CourseProfile({ navigation }) {
                   style={styles.reviewCard}
                   onPress={() => navigation.navigate('ReviewDetail', { reviewId: item.id })}
                 >
-                  {item.professor_name && (
-                    <Text style={styles.reviewProfessor}>
-                      {item.professor_name}
-                    </Text>
-                  )}
+                  <Text style={styles.reviewProfessor}>
+                    {item.professor_id
+                      ? professorsAggregated.find(
+                          (p) => p.professor_id === item.professor_id
+                        )?.nombre || 'Profesor desconocido'
+                      : 'Profesor desconocido'}
+                  </Text>
                   <Text style={styles.reviewDate}>
                     {new Date(item.created_at).toLocaleDateString('es-ES')}
                   </Text>
@@ -472,13 +448,13 @@ export default function CourseProfile({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Modal de Filtros - Misma lógica que ProfessorProfile */}
+      {/* Modal de Filtros */}
       <FilterModal
         key={`filter-modal-${JSON.stringify(filters)}`}
         visible={filterModalVisible}
         onClose={() => setFilterModalVisible(false)}
         onApplyFilters={handleApplyFilters}
-        context={{ courseId }} // Cambiado a courseId para que el modal muestre profesores
+        context={{ courseId }}
         currentFilters={filters}
       />
 
@@ -568,15 +544,6 @@ const styles = StyleSheet.create({
     fontWeight: "700", 
     color: COLORS.utOrange 
   },
-  tag: {
-    backgroundColor: COLORS.utOrange,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  tagText: { color: "#FFF", fontWeight: "bold" },
   reviewsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
