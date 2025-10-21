@@ -1,12 +1,15 @@
 // services/AuthContext.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
+import { canViewAnother, registerView, resetAnonCounters } from './ReviewAccess';
 
 const AuthContext = createContext({
   session: null,
   user: null,          // { id, email, ...perfil users (incluye has_unlimited_access) }
   loading: true,
   refreshUser: async () => {},
+  canAnonViewAnother: async () => ({ allowed: true, remaining: 999 }),
+  registerAnonReviewView: async () => ({ count: 0, remaining: 999 }),
 });
 
 export function AuthProvider({ children }) {
@@ -67,6 +70,16 @@ export function AuthProvider({ children }) {
         setLoading(true);
         setSession(session);
         await hydrateProfile(session?.user);
+
+        // reset guest/anon counters once after a successful sign-in
+        try {
+          if (_event === 'SIGNED_IN' && session?.user) {
+            await resetAnonCounters();
+          }
+        } catch (err) {
+          console.error('resetAnonCounters error:', err);
+        }
+
         setLoading(false);
       }
     );
@@ -89,7 +102,11 @@ export function AuthProvider({ children }) {
     },
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{
+    ...value,
+    canAnonViewAnother: canViewAnother,
+    registerAnonReviewView: registerView,
+  }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
