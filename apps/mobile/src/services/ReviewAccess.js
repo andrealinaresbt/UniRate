@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LIMIT = 5;
+const LIMIT = 3;
 const WINDOW_MS = 24*60*60*1000;
 const K = { start:'rv.windowStart', count:'rv.count', seen:'rv.seenSet' };
 
