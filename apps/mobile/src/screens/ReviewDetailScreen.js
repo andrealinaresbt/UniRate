@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { getReviewById } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
 import FancyReviewCard from '../components/FancyReviewCard';
+import { useAuth } from '../services/AuthContext';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -19,6 +20,38 @@ const COLORS = {
 export default function ReviewDetailScreen() {
   const route = useRoute();
   const { reviewId } = route.params || {};
+
+  // add hooks
+  const navigation = useNavigation();
+  const { user, canAnonViewAnother, registerAnonReviewView } = useAuth();
+
+  // gate: replace screen with ReviewAccessGate when anon is over limit
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
+      (async () => {
+        try {
+          if (user) return; // logged in: no limit
+
+          const { allowed } = await canAnonViewAnother(reviewId);
+          if (!active) return;
+
+          if (!allowed) {
+            // replace the current screen with gate (no popup)
+            navigation.replace('ReviewAccessGate', { reviewId });
+            return;
+          }
+
+          // register a single view for this anonymous user/reviewId
+          await registerAnonReviewView(reviewId);
+        } catch (err) {
+          console.error('anon view gate error:', err);
+        }
+      })();
+      return () => { active = false; };
+    }, [user, reviewId, navigation, canAnonViewAnother, registerAnonReviewView])
+  );
+
   const [state, setState] = useState({ loading: true, error: null, review: null });
 
   useEffect(() => {
@@ -36,7 +69,6 @@ export default function ReviewDetailScreen() {
     const off = EventBus.on('review:updated', ({ id } = {}) => {
       if (!mounted) return;
       if (id && id === reviewId) {
-        // reload
         (async () => {
           const r = await getReviewById(reviewId);
           if (!mounted) return;
@@ -79,9 +111,7 @@ export default function ReviewDetailScreen() {
           </Text>
         </View>
 
-        {/* Tarjeta con todos los detalles (sin limitar) */}
         <View style={styles.card}>
-          {/* ReviewCard usa "comment", "score", "difficulty"... así que pasamos tal cual */}
           <FancyReviewCard review={r} limited={false} />
         </View>
 

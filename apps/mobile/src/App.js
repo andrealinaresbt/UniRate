@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import ReviewAccessGateScreen from './screens/GateScreen';
 
 import NuevaResenaScreen from './screens/NuevaResenaScreen';
 import ViewReviewScreen from './screens/ViewReviewScreen';
@@ -72,6 +73,8 @@ export default function App() {
             <Stack.Screen name="DeleteCourse" component={DeleteCourseScreen} options={{ title: 'Eliminar Materia' }} />
             <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoritos' }} />
             <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Nueva reseña' }} />
+
+            <Stack.Screen name="ReviewAccessGate" component={ReviewAccessGateScreen} options={{ headerShown: false }} />
           </Stack.Group>
         </Stack.Navigator>
       </NavigationContainer>
