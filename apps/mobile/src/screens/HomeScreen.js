@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   Platform,
-  StatusBar,
   FlatList,
   ActivityIndicator,
   ScrollView,
@@ -91,6 +90,7 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => { if (error) setShowErrorPopup(true); }, [error]);
 
   return (
+    
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}

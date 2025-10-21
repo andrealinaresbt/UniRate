@@ -7,8 +7,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Platform,
-  StatusBar
+  Platform
 } from 'react-native';
 import { filterService } from '../services/filterService';
 import RangeSlider from './RangeSlider';
@@ -242,15 +241,8 @@ export default function FilterModal({
       animationType="slide"
       presentationStyle="overFullScreen" // Cambiado a overFullScreen
       onRequestClose={onClose}
-      statusBarTranslucent={true}
       supportedOrientations={['portrait']}
     >
-      {/* StatusBar específico para el modal */}
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor="#ffffff" 
-        translucent={true}
-      />
       
       <View style={styles.modalContainer}>
         {/* Header con botón Limpiar a la izquierda */}
@@ -494,7 +486,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     // Padding top para respetar la status bar
-    paddingTop: Platform.OS === 'ios' ? 50 : StatusBar.currentHeight,
+    paddingTop: Platform.OS === 'ios' ? 50 : 24,
   },
   header: {
     flexDirection: 'row',
