@@ -71,13 +71,6 @@ export default function App() {
             <Stack.Screen name="DeleteProfessor" component={DeleteProfessorScreen} options={{ title: 'Eliminar Profesor' }} />
             <Stack.Screen name="DeleteCourse" component={DeleteCourseScreen} options={{ title: 'Eliminar Materia' }} />
             <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoritos' }} />
-          </Stack.Group>
-
-          <Stack.Group screenOptions={{ 
-            presentation: 'modal',
-            headerStyle: { backgroundColor: '#ffffff' },
-            headerTintColor: '#111827',
-          }}>
             <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Nueva reseña' }} />
           </Stack.Group>
         </Stack.Navigator>
