@@ -1,7 +1,10 @@
 // services/AuthContext.js
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
-import { canViewAnother, registerView, resetAnonCounters } from './ReviewAccess';
+import {
+  canViewAnother, registerView, resetAnonCounters,
+  canAuthedViewAnother, registerAuthedReviewView
+} from './ReviewAccess';
 
 const AuthContext = createContext({
   session: null,
@@ -10,6 +13,8 @@ const AuthContext = createContext({
   refreshUser: async () => {},
   canAnonViewAnother: async () => ({ allowed: true, remaining: 999 }),
   registerAnonReviewView: async () => ({ count: 0, remaining: 999 }),
+  canAuthedViewAnother: async () => ({ allowed: true, remaining: 999 }),
+  registerAuthedReviewView: async () => null,
 });
 
 export function AuthProvider({ children }) {
@@ -106,6 +111,8 @@ export function AuthProvider({ children }) {
     ...value,
     canAnonViewAnother: canViewAnother,
     registerAnonReviewView: registerView,
+    canAuthedViewAnother: canAuthedViewAnother,
+    registerAuthedReviewView: registerAuthedReviewView,
   }}>{children}</AuthContext.Provider>;
 }
 

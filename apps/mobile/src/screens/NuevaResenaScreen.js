@@ -25,6 +25,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ProfessorService } from '../services/professorService';
 import { ReviewService, updateReview, getReviewById } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
+import { useAuth } from '../services/AuthContext';
+import { markReviewWritten } from '../services/ReviewAccess';
 const SCROLL_OFFSET = 120;
 
 const TAGS = [
@@ -84,6 +86,7 @@ export default function NuevaResenaScreen() {
   const route = useRoute();
   const insets = useSafeAreaInsets();
   const editReview = route.params?.editReview;
+  const { user } = useAuth();
 
   // Origen y params para prellenado
   const source = route.params?.source ?? null; // 'ProfessorProfile' | 'CourseProfile' | null
@@ -317,6 +320,11 @@ useEffect(() => {
       Alert.alert('¡Listo!', 'Reseña publicada con éxito.');
       if (editReview?.id) EventBus.emit('review:updated', { id: editReview.id });
       else EventBus.emit('review:created');
+      try {
+        if (user?.id) await markReviewWritten(user.id);
+      } catch (e) {
+        console.log('markReviewWritten error', e);
+      }
       if (editReview?.id) {
         try {
           const check = await getReviewById(editReview.id);

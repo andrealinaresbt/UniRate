@@ -2,6 +2,8 @@ import React from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuth } from '../services/AuthContext'; // added
+import LoginScreen from './LoginScreen';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -16,13 +18,17 @@ export default function ReviewAccessGateScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const reviewId = route.params?.reviewId;
+  const { user } = useAuth(); // added
 
   const goHome = () => {
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] }); // adjust 'Home' if your root name differs
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };
 
   const goAuth = () => {
-    navigation.navigate('Login', { redirectTo: { type: 'review', reviewId } });
+    navigation.navigate('AuthModal', { redirectTo: { type: 'review', reviewId } });
+  };
+  const goWriteReview = () => {
+    navigation.navigate('CreateReview', { prefill: {}, fromGate: true });
   };
 
   return (
@@ -30,18 +36,33 @@ export default function ReviewAccessGateScreen() {
       <View style={styles.container}>
         <View style={styles.card}>
           <Text style={styles.emoji}>🔒</Text>
-          <Text style={styles.title}>Sigue leyendo reseñas</Text>
-          <Text style={styles.subtitle}>
-            Crea una cuenta o inicia sesión para acceder a más reseñas.
-          </Text>
-
-          <Pressable style={styles.primaryBtn} onPress={goAuth}>
-            <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
-          </Pressable>
-
-          <Pressable style={styles.secondaryBtn} onPress={goHome}>
-            <Text style={styles.secondaryBtnText}>Cancelar y volver al inicio</Text>
-          </Pressable>
+          {user ? (
+            <>
+              <Text style={styles.title}>Publica una reseña para seguir</Text>
+              <Text style={styles.subtitle}>
+                Has alcanzado el límite de lectura. Escribe una reseña para reactivar el acceso.
+              </Text>
+              <Pressable style={styles.primaryBtn} onPress={() => navigation.navigate('NuevaResena')}>
+                <Text style={styles.primaryBtnText}>Escribir reseña</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryBtn} onPress={goHome}>
+                <Text style={styles.secondaryBtnText}>Volver al inicio</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Sigue leyendo reseñas</Text>
+              <Text style={styles.subtitle}>
+                Crea una cuenta o inicia sesión para acceder a más reseñas.
+              </Text>
+              <Pressable style={styles.primaryBtn} onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.primaryBtnText}>Iniciar sesión</Text>
+              </Pressable>
+              <Pressable style={styles.secondaryBtn} onPress={goHome}>
+                <Text style={styles.secondaryBtnText}>Cancelar y volver al inicio</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     </SafeAreaView>

@@ -21,35 +21,46 @@ export default function ReviewDetailScreen() {
   const route = useRoute();
   const { reviewId } = route.params || {};
 
-  // add hooks
+  // added hooks
   const navigation = useNavigation();
-  const { user, canAnonViewAnother, registerAnonReviewView } = useAuth();
+  const {
+    user,
+    canAnonViewAnother, registerAnonReviewView,
+    canAuthedViewAnother, registerAuthedReviewView
+  } = useAuth();
 
-  // gate: replace screen with ReviewAccessGate when anon is over limit
+  // gate: handle both authed and anon limits, replace to gate when blocked
   useFocusEffect(
     React.useCallback(() => {
       let active = true;
       (async () => {
         try {
-          if (user) return; // logged in: no limit
-
-          const { allowed } = await canAnonViewAnother(reviewId);
-          if (!active) return;
-
-          if (!allowed) {
-            // replace the current screen with gate (no popup)
-            navigation.replace('ReviewAccessGate', { reviewId });
+          // authed path
+          if (user?.id) {
+            const { allowed } = await canAuthedViewAnother(user.id);
+            if (!active) return;
+            if (!allowed) {
+              navigation.replace('ReviewAccessGate', { reviewId });
+              return;
+            }
+            await registerAuthedReviewView(user.id);
             return;
           }
 
-          // register a single view for this anonymous user/reviewId
+          // anon path
+          const { allowed } = await canAnonViewAnother(reviewId);
+          if (!active) return;
+          if (!allowed) {
+            navigation.replace('ReviewAccessGate', { reviewId });
+            return;
+          }
           await registerAnonReviewView(reviewId);
         } catch (err) {
-          console.error('anon view gate error:', err);
+          console.error('view gate error:', err);
         }
       })();
       return () => { active = false; };
-    }, [user, reviewId, navigation, canAnonViewAnother, registerAnonReviewView])
+    }, [user?.id, reviewId, navigation, canAnonViewAnother, registerAnonReviewView, canAuthedViewAnother, registerAuthedReviewView])
   );
 
   const [state, setState] = useState({ loading: true, error: null, review: null });
