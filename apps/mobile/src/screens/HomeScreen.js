@@ -95,6 +95,11 @@ export default function HomeScreen({ navigation }) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
       <SafeAreaView style={styles.safeAreaTop} edges={['top']}>
         <View style={styles.topSafeAreaContent}>
           <Header 
