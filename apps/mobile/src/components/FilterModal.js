@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     borderColor: '#E9ECEF',
   },
   dateButtonText: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#1A1A1A',
     fontWeight: '500',
   },

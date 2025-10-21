@@ -5,15 +5,13 @@ import {
   Alert, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native'
 import { login, sendResetEmail } from '../services/AuthService';
-
 import { isUnimetCorreoEmail } from '../utils/email'
-
-
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [forgotPasswordBusy, setForgotPasswordBusy] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
   async function onLogin() {
@@ -42,18 +40,22 @@ export default function LoginScreen({ navigation }) {
     }
   }
 
-  function onForgotPassword() {
+  async function onForgotPassword() {
     if (!email.trim()) {
       Alert.alert('Recuperar contraseña', 'Por favor ingresa tu correo en el campo de email.');
       return;
     }
-    sendResetEmail(email.trim())
-      .then(() => {
-        Alert.alert('Recuperar contraseña', 'Si el correo existe, recibirás instrucciones para restablecer tu contraseña.');
-      })
-      .catch(err => {
-        Alert.alert('Error', err.message || 'No se pudo enviar el correo de recuperación.');
-      });
+    
+    setForgotPasswordBusy(true)
+    
+    try {
+      await sendResetEmail(email.trim())
+      Alert.alert('Recuperar contraseña', 'Si el correo existe, recibirás instrucciones para restablecer tu contraseña.');
+    } catch (err) {
+      Alert.alert('Error', err.message || 'No se pudo enviar el correo de recuperación.');
+    } finally {
+      setForgotPasswordBusy(false)
+    }
   }
 
   return (
@@ -95,9 +97,14 @@ export default function LoginScreen({ navigation }) {
           <Text style={s.link}>¿No tienes cuenta? Regístrate</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onForgotPassword}>
-          <Text style={s.link}>¿Olvidaste tu contraseña?</Text>
-        </TouchableOpacity>
+        <View style={s.forgotPasswordContainer}>
+          <TouchableOpacity onPress={onForgotPassword}>
+            <Text style={s.link}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+          {forgotPasswordBusy && (
+            <ActivityIndicator size="small" color="#003087" style={s.forgotPasswordLoader} />
+          )}
+        </View>
       </View>
     </View>
   )
@@ -131,12 +138,20 @@ const s = StyleSheet.create({
   btnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
   link: { textAlign: 'center', color: '#003087', marginTop: 6, fontWeight: '600' },
   back: { textAlign: 'center', color: '#2B529A', marginTop: 6, fontWeight: '600' },
-// en StyleSheet
-btnGoogle: {
-  height: 50, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
-  backgroundColor: '#fff', marginTop: 8, borderWidth: 1, borderColor: '#CFE1FB'
-},
-btnGoogleTxt: { color: '#2B529A', fontSize: 16, fontWeight: '700' },
-
+  // loader de recuperación
+  forgotPasswordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  forgotPasswordLoader: {
+    marginTop: 6
+  },
+  // Estilos existentes para Google
+  btnGoogle: {
+    height: 50, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff', marginTop: 8, borderWidth: 1, borderColor: '#CFE1FB'
+  },
+  btnGoogleTxt: { color: '#2B529A', fontSize: 16, fontWeight: '700' },
 })
-
