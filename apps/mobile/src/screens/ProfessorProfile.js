@@ -21,7 +21,6 @@ import SearchResultItem from "../components/SearchResultItem";
 import BackHeader from "../components/BackHeader";
 import FilterModal from "../components/FilterModal";
 import FloatingReviewButton from "../components/FloatingReviewButton";
-import { useStatusBar } from '../hooks/useStatusBar';
 const COLORS = {
   seasalt: "#F6F7F8",
   utOrange: "#FF8200",
