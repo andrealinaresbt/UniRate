@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -33,12 +33,6 @@ export default function App() {
   return (
     <AuthProvider>
       <NavigationContainer>
-        {/* StatusBar global - se puede sobreescribir por pantalla */}
-        <StatusBar 
-          barStyle="dark-content" 
-          backgroundColor="#ffffff" 
-          translucent={false}
-        />
         
         <Stack.Navigator
           initialRouteName="Home"
@@ -46,33 +40,18 @@ export default function App() {
             headerStyle: { backgroundColor: '#ffffff' },
             headerTintColor: '#111827',
             contentStyle: { backgroundColor: '#ffffff' },
-            // Status bar DARK para todas las pantallas por defecto
-            statusBarStyle: 'dark',
-            statusBarColor: '#ffffff', 
-            statusBarTranslucent: false,
           }}
         >
-          {/* HomeScreen - Status Bar BLANCA */}
           <Stack.Screen 
             name="Home" 
             component={HomeScreen} 
             options={{ 
               title: 'UniRate', 
               headerShown: false,
-              // Status bar CLARA para HomeScreen
-              statusBarStyle: 'light',
-              statusBarColor: 'transparent', 
-              statusBarTranslucent: true,
             }} 
           />
 
-          {/* Grupo para pantallas normales - Status Bar OSCURA */}
-          <Stack.Group screenOptions={{
-            // Status bar OSCURA para todas estas pantallas
-            statusBarStyle: 'dark',
-            statusBarColor: '#ffffff',
-            statusBarTranslucent: false,
-          }}>
+          <Stack.Group>
             <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Iniciar sesión' }} />
             <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Crear cuenta' }} />
 
@@ -95,15 +74,10 @@ export default function App() {
             <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Favoritos' }} />
           </Stack.Group>
 
-          {/* Grupo para modales - Status Bar OSCURA */}
           <Stack.Group screenOptions={{ 
             presentation: 'modal',
             headerStyle: { backgroundColor: '#ffffff' },
             headerTintColor: '#111827',
-            // Status bar OSCURA para modales también
-            statusBarStyle: 'dark',
-            statusBarColor: '#ffffff',
-            statusBarTranslucent: false,
           }}>
             <Stack.Screen name="NuevaResena" component={NuevaResenaScreen} options={{ title: 'Nueva reseña' }} />
           </Stack.Group>
