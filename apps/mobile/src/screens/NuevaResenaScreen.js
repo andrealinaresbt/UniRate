@@ -339,7 +339,8 @@ useEffect(() => {
           }
         } catch (_) {}
       }
-      navigation.goBack();
+      // go to Home instead of going back
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
     } else {
       setStatus('error');
       let friendlyMsg = 'No se pudo publicar la reseña. Conservamos tus datos, intenta de nuevo.';

@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient'; // adjusted path to your supabase c
 const LIMIT = 3;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 const K = { start: 'rv.windowStart', count: 'rv.count', seen: 'rv.seenSet' };
+const TABLE_READS = 'review_reads';
 
 // ===== anon helpers (existing) =====
 export async function canViewAnother(reviewId) {
@@ -62,7 +63,7 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 async function fetchProfile(userId) {
   const { data, error } = await supabase
     .from('users')
-    .select('id, reviews_read_count, last_review_written_at')
+    .select('id, last_review_written_at')
     .eq('id', userId)
     .single();
   if (error) throw error;
@@ -76,33 +77,39 @@ export async function canAuthedViewAnother(userId) {
   const last = p.last_review_written_at ? new Date(p.last_review_written_at).getTime() : null;
   const fresh = last && (Date.now() - last) < MONTH_MS;
 
-  if (p.reviews_read_count > AUTHED_LIMIT && !fresh) {
+  // count distinct reviews read by this user
+  const { count, error: cErr } = await supabase
+    .from('review_reads')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (cErr) throw cErr;
+
+  if ((count ?? 0) > AUTHED_LIMIT && !fresh) {
     return { allowed: false, reason: 'needs-review' };
   }
-  return { allowed: true, remaining: Math.max(0, AUTHED_LIMIT - p.reviews_read_count) };
+  return { allowed: true, remaining: Math.max(0, AUTHED_LIMIT - (count ?? 0)) };
 }
 
-// export: increment read counter (client-side)
-export async function registerAuthedReviewView(userId) {
-  if (!userId) return;
-  const { data, error } = await supabase
-    .from('users')
-    .select('reviews_read_count')
-    .eq('id', userId)
-    .single();
+// export: upsert a unique (user_id, review_id) read
+export async function registerAuthedReviewView(userId, reviewId) {
+  if (!userId || !reviewId) return;
+  // UUID guard helps catch route params that aren't DB uuids
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(reviewId));
+  if (!isUUID) {
+    console.log('[review_reads] bad reviewId format', reviewId);
+    return;
+  }
+  const sess = await supabase.auth.getSession();
+  console.log('[review_reads] session?', !!sess.data.session, 'user', sess.data.session?.user?.id);
 
-  if (error) throw error;
-
-  const current = data?.reviews_read_count ?? 0;
-  const next = current + 1;
-
-  const { error: upErr } = await supabase
-    .from('users')
-    .update({ reviews_read_count: next })
-    .eq('id', userId);
-
-  if (upErr) throw upErr;
-  return next;
+  const { error } = await supabase
+    .from('review_reads')
+    .upsert(
+      { user_id: userId, review_id: reviewId },
+      { onConflict: 'user_id,review_id', ignoreDuplicates: true, returning: 'minimal' }
+    );
+  if (error) { console.log('[review_reads upsert error]', error); throw error; }
+  return true;
 }
 
 

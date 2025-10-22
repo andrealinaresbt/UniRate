@@ -43,7 +43,7 @@ export default function ReviewDetailScreen() {
               navigation.replace('ReviewAccessGate', { reviewId });
               return;
             }
-            await registerAuthedReviewView(user.id);
+            await registerAuthedReviewView(user.id, reviewId);
             return;
           }
 
@@ -54,7 +54,11 @@ export default function ReviewDetailScreen() {
             navigation.replace('ReviewAccessGate', { reviewId });
             return;
           }
-          await registerAnonReviewView(reviewId);
+          
+          if (reviewId) {
+            console.log('[registerAuthedReviewView call]', { userId: user.id, reviewId });
+            await registerAuthedReviewView(user.id, reviewId);
+          }
         } catch (err) {
           console.error('view gate error:', err);
         }
