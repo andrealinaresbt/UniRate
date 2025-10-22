@@ -66,8 +66,6 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
                 }}
               />
 
-              <MenuItem text="Configuración" onPress={onClose} />
-
               {isAdmin && (
                 <>
                   <View style={{ height: 12 }} />
@@ -75,10 +73,6 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
                   <MenuItem
                     text="Panel admin"
                     onPress={() => { onClose(); navigation.navigate('Admin'); }}
-                  />
-                  <MenuItem
-                    text="Gestión de profesores"
-                    onPress={() => { onClose(); navigation.navigate('AdminProfessors'); }}
                   />
                 </>
               )}

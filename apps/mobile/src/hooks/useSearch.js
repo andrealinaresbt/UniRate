@@ -30,7 +30,8 @@ export function useSearch() {
       // Fetch professors
       const { data: profs, error: profError } = await supabase
         .from('professors')
-        .select('*, reviews(score_teacher, professor_id)') // Traer también score_teacher y professor_id
+        // traer reviews con ambos campos por seguridad: score (course-level) y score_teacher
+        .select('*, reviews(score, score_teacher, professor_id)')
         .ilike('full_name', `%${term}%`);
 
       if (profError) throw profError;
@@ -40,12 +41,20 @@ export function useSearch() {
         (profs || []).map(async (p) => {
           const { data: profReviews, error: profReviewsError } = await supabase
             .from('reviews')
-            .select('score_teacher')
+            // fetch both score (course-level) and score_teacher so we can prefer score
+            .select('score, score_teacher')
             .eq('professor_id', p.id);
+
           const review_count = profReviews?.length || 0;
           const avg_score =
             review_count > 0
-              ? (profReviews.reduce((sum, r) => sum + (r.score_teacher || 0), 0) / review_count).toFixed(2)
+              ? (
+                  profReviews.reduce((sum, r) => {
+                    // prefer course-level `score`, fallback to `score_teacher` when missing
+                    const val = Number(r.score ?? r.score_teacher ?? 0);
+                    return sum + (isNaN(val) ? 0 : val);
+                  }, 0) / review_count
+                ).toFixed(2)
               : null;
           return {
             ...p,
