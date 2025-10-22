@@ -27,6 +27,14 @@ import { ReviewService, updateReview, getReviewById } from '../services/reviewSe
 import { EventBus } from '../utils/EventBus';
 import { useAuth } from '../services/AuthContext';
 import { markReviewWritten } from '../services/ReviewAccess';
+
+// ⬇️ NUEVO: importa helpers para cruzar Profesor↔Materia
+import {
+  getCoursesByProfessor,
+  getProfessorsByCourse,
+  isValidProfessorCoursePair,
+} from '../services/reviewService';
+
 const SCROLL_OFFSET = 120;
 
 const TAGS = [
@@ -103,6 +111,10 @@ export default function NuevaResenaScreen() {
   const [profesorId, setProfesorId] = useState(null);
   const [materiaId, setMateriaId] = useState(null);
 
+  // ⬇️ NUEVO: conjuntos permitidos según la otra selección (null = sin restricción)
+  const [allowedCourseIds, setAllowedCourseIds] = useState(null);     // Set<number|string> | null
+  const [allowedProfessorIds, setAllowedProfessorIds] = useState(null); // Set<number|string> | null
+
   // campos
   const [asistencia, setAsistencia] = useState(false);
   const [usoTexto, setUsoTexto] = useState(false);
@@ -128,45 +140,46 @@ export default function NuevaResenaScreen() {
   const anchors = useRef({}); // {puntuacionY, dificultadY, comentarioY}
 
   const VERIFY_SAVE = false;
-const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
-useEffect(() => {
-  const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
-  const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
 
-  return () => {
-    showSub.remove();
-    hideSub.remove();
-  };
-}, []);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
-// cargar catálogos
-useEffect(() => {
-  (async () => {
-    try {
-      const [p, c] = await Promise.all([
-        ProfessorService.getAllProfessors(),
-        ReviewService.getAllCourses(),
-      ]);
-      if (p.success) {
-        const ordenadosP = (p.data || []).sort((a, b) =>
-          (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
-        );
-        setProfesores(ordenadosP);
+  // cargar catálogos
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoading(true);
+        const [p, c] = await Promise.all([
+          ProfessorService.getAllProfessors(),
+          ReviewService.getAllCourses(),
+        ]);
+        if (p.success) {
+          const ordenadosP = (p.data || []).sort((a, b) =>
+            (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
+          );
+          setProfesores(ordenadosP);
+        }
+        if (c.success) {
+          const ordenadosC = (c.data || []).sort((a, b) =>
+            (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
+          );
+          setMaterias(ordenadosC);
+        }
+      } catch (_) {
+        Alert.alert('Error', 'No fue posible cargar los catálogos.');
+      } finally {
+        setLoading(false);
       }
-      if (c.success) {
-        const ordenadosC = (c.data || []).sort((a, b) =>
-          (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
-        );
-        setMaterias(ordenadosC);
-      }
-    } catch (_) {
-      Alert.alert('Error', 'No fue posible cargar los catálogos.');
-    } finally {
-      setLoading(false);
-    }
-  })();
-}, []);
+    })();
+  }, []);
 
   // prellenado si venimos de perfil (y no estamos editando)
   useEffect(() => {
@@ -242,6 +255,55 @@ useEffect(() => {
     editReview,
   ]);
 
+  // ⬇️ NUEVO: cuando seleccionas PROFESOR → restringe materias válidas
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      if (!profesorId) {
+        setAllowedCourseIds(null); // sin restricción
+        return;
+      }
+      try {
+        const list = await getCoursesByProfessor(profesorId);
+        if (canceled) return;
+        const ids = new Set((list || []).map(c => c.id));
+        setAllowedCourseIds(ids);
+
+        // si hay una materia seleccionada que no pertenece, límpiala
+        if (materiaId && !ids.has(materiaId)) setMateriaId(null);
+      } catch (e) {
+        // si falla, no restringimos
+        setAllowedCourseIds(null);
+      }
+    })();
+    return () => { canceled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profesorId]);
+
+  // ⬇️ NUEVO: cuando seleccionas MATERIA → restringe profesores válidos
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      if (!materiaId) {
+        setAllowedProfessorIds(null); // sin restricción
+        return;
+      }
+      try {
+        const list = await getProfessorsByCourse(materiaId);
+        if (canceled) return;
+        const ids = new Set((list || []).map(p => p.id));
+        setAllowedProfessorIds(ids);
+
+        // si hay un profesor seleccionado que no dicta esa materia, límpialo
+        if (profesorId && !ids.has(profesorId)) setProfesorId(null);
+      } catch (e) {
+        setAllowedProfessorIds(null);
+      }
+    })();
+    return () => { canceled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materiaId]);
+
   const toggleEtiqueta = (tag) => {
     if (etiquetas.includes(tag)) {
       setEtiquetas(etiquetas.filter((t) => t !== tag));
@@ -272,6 +334,18 @@ useEffect(() => {
       Alert.alert('Formulario inválido', errorMsg);
       setStatus('error');
       return;
+    }
+
+    // ⬇️ NUEVO: validación servidor de la dupla profesor-curso
+    try {
+      const validPair = await isValidProfessorCoursePair(profesorId, materiaId);
+      if (!validPair) {
+        setStatus('error');
+        Alert.alert('Combinación inválida', 'Ese profesor no dicta esa materia.');
+        return;
+      }
+    } catch (_) {
+      // si no podemos validar, seguimos y dejamos que el backend grite
     }
 
     setStatus('enviando');
@@ -359,25 +433,37 @@ useEffect(() => {
   // filtros (ordenan también)
   const filteredProfesores = useMemo(() => {
     const q = profQuery.trim().toLowerCase();
-    const lista = profesores.filter((p) =>
+    let lista = profesores.filter((p) =>
       (p.full_name || '').toLowerCase().includes(q)
     );
+
+    // ⬇️ NUEVO: si hay restricción por materia seleccionada, filtramos
+    if (allowedProfessorIds instanceof Set) {
+      lista = lista.filter(p => allowedProfessorIds.has(p.id));
+    }
+
     return lista.sort((a, b) =>
       (a.full_name || '').localeCompare(b.full_name || '', 'es', { sensitivity: 'base' })
     );
-  }, [profQuery, profesores]);
+  }, [profQuery, profesores, allowedProfessorIds]);
 
   const filteredMaterias = useMemo(() => {
     const q = courseQuery.trim().toLowerCase();
-    const lista = materias.filter((m) => {
+    let lista = materias.filter((m) => {
       const name = (m.name || '').toLowerCase();
       const code = (m.code || '').toLowerCase();
       return name.includes(q) || code.includes(q);
     });
+
+    // ⬇️ NUEVO: si hay restricción por profesor seleccionado, filtramos
+    if (allowedCourseIds instanceof Set) {
+      lista = lista.filter(m => allowedCourseIds.has(m.id));
+    }
+
     return lista.sort((a, b) =>
       (a.name || '').localeCompare(b.name || '', 'es', { sensitivity: 'base' })
     );
-  }, [courseQuery, materias]);
+  }, [courseQuery, materias, allowedCourseIds]);
 
   if (loading) {
     return (
@@ -389,15 +475,14 @@ useEffect(() => {
   }
 
   // helpers de scroll a anclas
-const scrollTo = (key, extra = 0) => {
-  const y = anchors.current[key] ?? 0;
-  const target = Math.max(y - (SCROLL_OFFSET + extra), 0);
-  // pequeño defer para asegurar que el teclado terminó de animar
-  requestAnimationFrame(() => {
-    scrollRef.current?.scrollTo({ y: target, animated: true });
-  });
-};
-
+  const scrollTo = (key, extra = 0) => {
+    const y = anchors.current[key] ?? 0;
+    const target = Math.max(y - (SCROLL_OFFSET + extra), 0);
+    // pequeño defer para asegurar que el teclado terminó de animar
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: target, animated: true });
+    });
+  };
 
   // ----- UI con teclado cómodo y botón fijo -----
   return (
@@ -688,104 +773,104 @@ const scrollTo = (key, extra = 0) => {
           </Modal>
 
 
-        {/* Picker Materia */}
-        <Modal
-          visible={openCoursePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setOpenCoursePicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Selecciona materia</Text>
+          {/* Picker Materia */}
+          <Modal
+            visible={openCoursePicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setOpenCoursePicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Selecciona materia</Text>
 
-              {/* Barra de búsqueda */}
-              <View style={styles.searchRow}>
-                <TextInput
-                  style={styles.searchInput}
-                  value={courseQuery}
-                  onChangeText={setCourseQuery}
-                  placeholder="Buscar materia o código…"
-                  placeholderTextColor={COLORS.muted}
-                  autoFocus
-                  returnKeyType="search"
-                  onSubmitEditing={Keyboard.dismiss}
-                  clearButtonMode="while-editing"
-                />
-                {!!courseQuery && (
-                  <TouchableOpacity
-                    style={styles.clearX}
-                    onPress={() => {
-                      setCourseQuery('');
-                      Keyboard.dismiss();
-                    }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Text style={styles.clearXText}>✕</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {filteredMaterias.length === 0 ? (
-                <Text style={styles.emptyText}>No hay resultados</Text>
-              ) : (
-                <FlatList
-                  data={filteredMaterias}
-                  keyExtractor={(item) => String(item.id)}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
-                  onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
-                  renderItem={({ item }) => (
+                {/* Barra de búsqueda */}
+                <View style={styles.searchRow}>
+                  <TextInput
+                    style={styles.searchInput}
+                    value={courseQuery}
+                    onChangeText={setCourseQuery}
+                    placeholder="Buscar materia o código…"
+                    placeholderTextColor={COLORS.muted}
+                    autoFocus
+                    returnKeyType="search"
+                    onSubmitEditing={Keyboard.dismiss}
+                    clearButtonMode="while-editing"
+                  />
+                  {!!courseQuery && (
                     <TouchableOpacity
-                      style={styles.modalItem}
+                      style={styles.clearX}
                       onPress={() => {
-                        setMateriaId(item.id);
-                        setOpenCoursePicker(false);
+                        setCourseQuery('');
                         Keyboard.dismiss();
                       }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Text style={styles.modalItemText}>
-                        {item.name} {item.code ? `(${item.code})` : ''}
-                      </Text>
+                      <Text style={styles.clearXText}>✕</Text>
                     </TouchableOpacity>
                   )}
-                />
-              )}
+                </View>
+
+                {filteredMaterias.length === 0 ? (
+                  <Text style={styles.emptyText}>No hay resultados</Text>
+                ) : (
+                  <FlatList
+                    data={filteredMaterias}
+                    keyExtractor={(item) => String(item.id)}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
+                    onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.modalItem}
+                        onPress={() => {
+                          setMateriaId(item.id);
+                          setOpenCoursePicker(false);
+                          Keyboard.dismiss();
+                        }}
+                      >
+                        <Text style={styles.modalItemText}>
+                          {item.name} {item.code ? `(${item.code})` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+              </View>
             </View>
-          </View>
-        </Modal>
+          </Modal>
 
 
-        {Platform.OS === 'ios' && (
-          <>
-            <InputAccessoryView nativeID={ACC_SCORE}>
-              <View style={styles.accessoryBar}>
-                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
-                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
-                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
-                </TouchableOpacity>
-              </View>
-            </InputAccessoryView>
+          {Platform.OS === 'ios' && (
+            <>
+              <InputAccessoryView nativeID={ACC_SCORE}>
+                <View style={styles.accessoryBar}>
+                  <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                  <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                    <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                  </TouchableOpacity>
+                </View>
+              </InputAccessoryView>
 
-            <InputAccessoryView nativeID={ACC_DIFF}>
-              <View style={styles.accessoryBar}>
-                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
-                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
-                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
-                </TouchableOpacity>
-              </View>
-            </InputAccessoryView>
+              <InputAccessoryView nativeID={ACC_DIFF}>
+                <View style={styles.accessoryBar}>
+                  <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                  <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                    <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                  </TouchableOpacity>
+                </View>
+              </InputAccessoryView>
 
-            <InputAccessoryView nativeID={ACC_COMMENT}>
-              <View style={styles.accessoryBar}>
-                <Text style={styles.accessoryHint}>Listo con el teclado</Text>
-                <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
-                  <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
-                </TouchableOpacity>
-              </View>
-            </InputAccessoryView>
-          </>
-        )}
+              <InputAccessoryView nativeID={ACC_COMMENT}>
+                <View style={styles.accessoryBar}>
+                  <Text style={styles.accessoryHint}>Listo con el teclado</Text>
+                  <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.accessoryBtn}>
+                    <Text style={styles.accessoryBtnText}>Ocultar teclado</Text>
+                  </TouchableOpacity>
+                </View>
+              </InputAccessoryView>
+            </>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -958,48 +1043,48 @@ const styles = StyleSheet.create({
   },
   modalItemText: { fontSize: 14, color: COLORS.text },
   accessoryBar: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  paddingHorizontal: 16,
-  paddingVertical: 10,
-  backgroundColor: '#F2F3F5',
-  borderTopWidth: StyleSheet.hairlineWidth,
-  borderTopColor: '#D6DAE1',
-},
-searchRow: {
-  position: 'relative',
-  marginBottom: 8,
-},
-clearX: {
-  position: 'absolute',
-  right: 10,
-  top: 10,
-  width: 28,
-  height: 28,
-  borderRadius: 14,
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: '#E9EEF5',
-},
-clearXText: {
-  color: '#334155',
-  fontWeight: '700',
-},
-accessoryHint: {
-  fontSize: 13,
-  color: '#6B7280',
-},
-accessoryBtn: {
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 8,
-  backgroundColor: COLORS.accent,
-},
-accessoryBtnText: {
-  color: '#fff',
-  fontWeight: '600',
-  fontSize: 14,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F2F3F5',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#D6DAE1',
+  },
+  searchRow: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  clearX: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E9EEF5',
+  },
+  clearXText: {
+    color: '#334155',
+    fontWeight: '700',
+  },
+  accessoryHint: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  accessoryBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: COLORS.accent,
+  },
+  accessoryBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
 
 });
