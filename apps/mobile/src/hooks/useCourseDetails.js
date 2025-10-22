@@ -42,7 +42,7 @@ export function useCourseDetails(courseId) {
           score,
           difficulty,
           comment,
-          profesora_tags,
+      
           professor_tags,
           comentario,
           calidad,
