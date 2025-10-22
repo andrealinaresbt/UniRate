@@ -81,8 +81,9 @@ export function useProfessorDetails(professorId) {
       // 4) Calcular promedios y porcentaje "volverían a tomar"
       if (reviewsWithCourse.length > 0) {
         const total = reviewsWithCourse.length;
-        // Use normalized fields to compute aggregates
-        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.score_teacher) || 0), 0);
+  // Use normalized fields to compute aggregates
+  // Use course-level score for professor satisfaction as requested
+  const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.score) || 0), 0);
         const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.difficulty) || 0), 0);
         const takeAgainCount = reviewsWithCourse.reduce(
           (acc, r) => acc + ((r.would_take_again || r.volveria || r.take_again) ? 1 : 0),

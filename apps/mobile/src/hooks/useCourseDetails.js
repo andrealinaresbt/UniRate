@@ -79,7 +79,8 @@ export function useCourseDetails(courseId) {
           if (!mapProf[profId]) {
             mapProf[profId] = { professor_id: r.professor_id, reviewsSum: 0, reviewsCount: 0 };
           }
-          mapProf[profId].reviewsSum += Number(r.score_teacher) || 0;
+    // Use course-level score to compute professor aggregates (align with requested rule)
+    mapProf[profId].reviewsSum += Number(r.score) || 0;
           mapProf[profId].reviewsCount += 1;
         });
 
