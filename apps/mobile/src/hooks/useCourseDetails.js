@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
+const DEBUG_COURSE_HOOK = false;
+
 export function useCourseDetails(courseId) {
   const [course, setCourse] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -40,30 +42,44 @@ export function useCourseDetails(courseId) {
           score,
           difficulty,
           comment,
+          profesora_tags,
           professor_tags,
+          comentario,
+          calidad,
+          dificultad,
           created_at
         `)
         .eq('course_id', courseId);
       if (reviewsError) throw reviewsError;
-      setReviews(reviewsData || []);
+      // Normalize each review to consistent fields
+      const normalized = (reviewsData || []).map((r) => ({
+        ...r,
+        score: Number(r.score ?? r.calidad ?? r.score_teacher ?? 0),
+        score_teacher: Number(r.score_teacher ?? r.score ?? r.calidad ?? 0),
+        difficulty: Number(r.difficulty ?? r.dificultad ?? 0),
+        comment: r.comment ?? r.comentario ?? r.comment ?? '',
+      }));
+      setReviews(normalized || []);
 
       // 3) Calcular promedios generales
       if (reviewsData && reviewsData.length > 0) {
         const total = reviewsData.length;
-        const sumScore = reviewsData.reduce((acc, r) => acc + (r.score || 0), 0); // score para materia
-        const sumDifficulty = reviewsData.reduce((acc, r) => acc + (r.difficulty || 0), 0);
+  const sumScore = normalized.reduce((acc, r) => acc + (Number(r.score) || 0), 0); // score para materia
+  const sumDifficulty = normalized.reduce((acc, r) => acc + (Number(r.difficulty) || 0), 0);
 
         setAvgSatisfaccion((sumScore / total).toFixed(2));
-        setAvgDificultad((sumDifficulty / total).toFixed(2));
+  const avgDiffVal = (sumDifficulty / total);
+  setAvgDificultad(avgDiffVal.toFixed(2));
+  if (DEBUG_COURSE_HOOK && avgDiffVal === 0) console.log('[useCourseDetails] courseId', courseId, 'normalized', normalized);
 
         // 4) Agrupar profesores
         const mapProf = {};
-        reviewsData.forEach((r) => {
+        normalized.forEach((r) => {
           const profId = r.professor_id || 'desconocido';
           if (!mapProf[profId]) {
             mapProf[profId] = { professor_id: r.professor_id, reviewsSum: 0, reviewsCount: 0 };
           }
-          mapProf[profId].reviewsSum += r.score_teacher || 0;
+          mapProf[profId].reviewsSum += Number(r.score_teacher) || 0;
           mapProf[profId].reviewsCount += 1;
         });
 

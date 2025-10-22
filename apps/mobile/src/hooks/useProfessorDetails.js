@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
+// Debug flag: set to true to log normalization details
+const DEBUG_PROF_HOOK = false;
+
 export function useProfessorDetails(professorId) {
   const [professor, setProfessor] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -37,8 +40,7 @@ export function useProfessorDetails(professorId) {
         .select('*')
         .eq('professor_id', professorId);
       if (reviewsError) throw reviewsError;
-
-      // 3) Añadir nombre del curso a cada review
+      // 3) Normalize reviews and add course name to each review
       const reviewsWithCourse = await Promise.all(
         (reviewsData || []).map(async (r) => {
           const { data: courseData } = await supabase
@@ -47,15 +49,27 @@ export function useProfessorDetails(professorId) {
             .eq('id', r.course_id)
             .single();
 
-          // Asegurarse de que los tags sean un array
-          const tagsArray = Array.isArray(r.professor_tags)
-            ? r.professor_tags
-            : r.professor_tags
-            ? [r.professor_tags]
+          // Normalize numeric fields coming from different schemas
+          const normalized = {
+            ...r,
+            // score variants (course-level / teacher-level)
+            score: Number(r.score ?? r.calidad ?? r.score_teacher ?? 0),
+            score_teacher: Number(r.score_teacher ?? r.score ?? r.calidad ?? 0),
+            // difficulty variants
+            difficulty: Number(r.difficulty ?? r.dificultad ?? 0),
+            // comment variants
+            comment: r.comment ?? r.comentario ?? r.comment ?? '',
+          };
+
+          // Ensure tags array
+          const tagsArray = Array.isArray(normalized.professor_tags)
+            ? normalized.professor_tags
+            : normalized.professor_tags
+            ? [normalized.professor_tags]
             : [];
 
           return {
-            ...r,
+            ...normalized,
             course_name: courseData?.name || 'Materia desconocida',
             professor_tags: tagsArray,
           };
@@ -67,16 +81,22 @@ export function useProfessorDetails(professorId) {
       // 4) Calcular promedios y porcentaje "volverían a tomar"
       if (reviewsWithCourse.length > 0) {
         const total = reviewsWithCourse.length;
-        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (r.score_teacher || 0), 0);
-        const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (r.difficulty || 0), 0);
+        // Use normalized fields to compute aggregates
+        const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.score_teacher) || 0), 0);
+        const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.difficulty) || 0), 0);
         const takeAgainCount = reviewsWithCourse.reduce(
-          (acc, r) => acc + (r.take_again ? 1 : 0),
+          (acc, r) => acc + ((r.would_take_again || r.volveria || r.take_again) ? 1 : 0),
           0
         );
 
         setAvgRating((sumRating / total).toFixed(2));
-        setAvgDifficulty((sumDifficulty / total).toFixed(2));
+        const avgDiffVal = (sumDifficulty / total);
+        setAvgDifficulty(avgDiffVal.toFixed(2));
         setWouldTakeAgain(Math.round((takeAgainCount / total) * 100));
+        if (DEBUG_PROF_HOOK && avgDiffVal === 0) {
+          console.log('[useProfessorDetails] professorId', professorId, 'normalized reviews', reviewsWithCourse);
+          console.log('[useProfessorDetails] computed avgDifficulty', avgDiffVal);
+        }
       } else {
         setAvgRating(null);
         setAvgDifficulty(null);
