@@ -255,7 +255,23 @@ export default function NuevaResenaScreen() {
     editReview,
   ]);
 
-  // ⬇️ NUEVO: cuando seleccionas PROFESOR → restringe materias válidas
+    // helpers para moverse entre modales / limpiar filtro ====
+  const closeCoursePicker = () => setOpenCoursePicker(false);
+
+  const goChangeProfessor = () => {
+    setOpenCoursePicker(false);
+    setOpenProfPicker(true);
+  };
+
+  const clearProfessorFilter = () => {
+    setProfesorId(null);
+    setAllowedCourseIds(null);
+    setOpenCoursePicker(false);
+    // opcional: abrir directo el de profesor
+    setOpenProfPicker(true);
+  };
+
+  // cuando seleccionas PROFESOR → restringe materias válidas
   useEffect(() => {
     let canceled = false;
     (async () => {
@@ -773,15 +789,36 @@ export default function NuevaResenaScreen() {
           </Modal>
 
 
-          {/* Picker Materia */}
-          <Modal
-            visible={openCoursePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setOpenCoursePicker(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
+      {/* Picker Materia */}
+      <Modal
+        visible={openCoursePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCoursePicker} // 👈 usamos la función que agregamos
+      >
+        {/* 👇 esto permite cerrar el modal tocando fuera */}
+        <TouchableWithoutFeedback onPress={closeCoursePicker}>
+          <View style={styles.modalOverlay}>
+                            {/* 👇 esto evita que el tap dentro cierre el modal */}
+                            <TouchableWithoutFeedback onPress={() => {}}>
+                              <View style={styles.modalCard}>
+                                {/* ===== Header de acciones (nuevo) ===== */}
+                <View style={styles.modalHeaderRow}>
+                  <TouchableOpacity onPress={closeCoursePicker} style={styles.headerBtnGhost}>
+                    <Text style={styles.headerBtnGhostText}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <TouchableOpacity onPress={clearProfessorFilter} style={styles.headerBtnOutline}>
+                      <Text style={styles.headerBtnOutlineText}>Quitar filtro</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={goChangeProfessor} style={styles.headerBtnPrimary}>
+                      <Text style={styles.headerBtnPrimaryText}>Cambiar profesor</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <Text style={styles.modalTitle}>Selecciona materia</Text>
 
                 {/* Barra de búsqueda */}
@@ -811,34 +848,45 @@ export default function NuevaResenaScreen() {
                   )}
                 </View>
 
-                {filteredMaterias.length === 0 ? (
-                  <Text style={styles.emptyText}>No hay resultados</Text>
-                ) : (
-                  <FlatList
-                    data={filteredMaterias}
-                    keyExtractor={(item) => String(item.id)}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
-                    onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.modalItem}
-                        onPress={() => {
-                          setMateriaId(item.id);
-                          setOpenCoursePicker(false);
-                          Keyboard.dismiss();
-                        }}
-                      >
-                        <Text style={styles.modalItemText}>
-                          {item.name} {item.code ? `(${item.code})` : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                )}
+              {filteredMaterias.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyText}>No hay materias disponibles.</Text>
+                  <TouchableOpacity onPress={clearProfessorFilter} style={styles.emptyBtnOutline}>
+                    <Text style={styles.emptyBtnOutlineText}>Quitar filtro</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={goChangeProfessor} style={styles.emptyBtnPrimary}>
+                    <Text style={styles.emptyBtnPrimaryText}>Cambiar profesor</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <FlatList
+                  data={filteredMaterias}
+                  keyExtractor={(item) => String(item.id)}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                  onScrollBeginDrag={Keyboard.dismiss}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.modalItem}
+                      onPress={() => {
+                        setMateriaId(item.id);
+                        setOpenCoursePicker(false);
+                        Keyboard.dismiss();
+                      }}
+                    >
+                      <Text style={styles.modalItemText}>
+                        {item.name} {item.code ? `(${item.code})` : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+
               </View>
-            </View>
-          </Modal>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
 
           {Platform.OS === 'ios' && (
@@ -1086,5 +1134,69 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-
+    // Header acciones modal (nuevo)
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  headerBtnGhost: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  headerBtnGhostText: {
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  headerBtnOutline: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  headerBtnOutlineText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  headerBtnPrimary: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: COLORS.accent,
+  },
+  headerBtnPrimaryText: {
+    color: COLORS.white,
+    fontWeight: '700',
+  },
+    emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyBtnOutline: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  emptyBtnOutlineText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  emptyBtnPrimary: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: COLORS.accent,
+  },
+  emptyBtnPrimaryText: {
+    color: COLORS.white,
+    fontWeight: '700',
+  },
 });
