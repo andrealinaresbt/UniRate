@@ -9,20 +9,36 @@ import { EventBus } from '../utils/EventBus';
 export default function MyReviewsScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
   const isFocused = useIsFocused();
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     if (!user?.id) {
+      console.log('[MyReviews] no user id yet, skipping load');
       setItems([]);
       setLoading(false);
       return;
     }
-    const res = await getReviews({ user_id: user.id, limit: 100, orderBy: 'created_at', order: 'desc' });
-    if (res.success) setItems(res.data || []);
-    else setItems([]);
-    setLoading(false);
+
+    try {
+      const res = await getReviews({ user_id: user.id, limit: 100, orderBy: 'created_at', order: 'desc' });
+      console.log('[MyReviews] load res for user', user.id, res);
+      if (res.success) {
+        setItems(res.data || []);
+      } else {
+        setItems([]);
+        setError(res.error || 'Error cargando reseñas');
+      }
+    } catch (e) {
+      console.error('[MyReviews] load error', e);
+      setItems([]);
+      setError(e?.message || String(e));
+    } finally {
+      setLoading(false);
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -39,6 +55,7 @@ export default function MyReviewsScreen() {
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>Mis reseñas</Text>
+      {error && <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text>}
 
       {loading ? (
         <View style={styles.center}>

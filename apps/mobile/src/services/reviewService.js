@@ -3,6 +3,57 @@ import { supabase } from './supabaseClient';
 import { CourseProfessorService } from './courseProfessorService'; // opcional: si no existe, el fallback interno se encarga
 
 /**
+ * Reconstruye un objeto joineado cuando Supabase devuelve columnas aplanadas
+ * Ej: { 'professors_1.name': '...' } o { 'professors_name': '...' }
+ * @param {object} row
+ * @param {string} tableName e.g. 'professors'
+ */
+function buildJoinedObject(row, tableName) {
+  if (!row || !tableName) return null;
+  // si ya viene como objeto anidado
+  if (row[tableName] && typeof row[tableName] === 'object') return row[tableName];
+
+  const lowerTable = tableName.toLowerCase();
+  const keys = Object.keys(row || []);
+  // buscar keys que contengan el nombre de la tabla (ej: 'professors_1.name', 'professors_name')
+  const candidates = keys.filter(k => k.toLowerCase().includes(lowerTable));
+  if (!candidates.length) return null;
+
+  const out = {};
+  // Extraer campos de cada key candidata. Soporta formatos:
+  // - professors.name
+  // - professors_1.name
+  // - professors_1_name
+  // - professors_name
+  const re = new RegExp(`${lowerTable}(?:[_\\d]+)?[._]?(.*)$`, 'i');
+  candidates.forEach((k) => {
+    const m = k.toString().toLowerCase().match(re);
+    let field = null;
+    if (m && m[1]) {
+      field = m[1];
+    } else {
+      // fallback: try splitting by last separator
+      const parts = k.split(/[._]/);
+      field = parts.length ? parts[parts.length - 1] : k;
+    }
+    if (!field) return;
+    // normalize common field names
+    if (field === 'name' || field === 'full_name' || field === 'full-name') {
+      out.full_name = out.full_name || row[k];
+    } else if (field === 'id' || field === 'professor_id' || field === 'course_id') {
+      out.id = out.id || row[k];
+    } else {
+      // assign generically
+      out[field] = out[field] || row[k];
+    }
+  });
+
+  // si no devolvimos nada útil, regresar null
+  if (Object.keys(out).length === 0) return null;
+  return out;
+}
+
+/**
  * ===============================
  *  HELPERS M2M: PROFESOR ↔ CURSO
  * ===============================
@@ -176,7 +227,7 @@ export const ReviewService = {
         .from('reviews')
         .select(`
           *,
-          professors ( id, full_name, name ),
+          professors ( id, full_name ),
           courses ( id, name, code )
         `)
         .eq('professor_id', professorId)
@@ -184,11 +235,11 @@ export const ReviewService = {
 
       if (error) throw error;
 
-      // Asegurar nombre consistente del profe
+      // Asegurar que si existe, professors trae full_name
       const fixed = (data || []).map(r => ({
         ...r,
         professors: r.professors
-          ? { ...r.professors, display_name: r.professors.full_name || r.professors.name || '' }
+          ? { ...r.professors, full_name: r.professors.full_name || r.professors.name || '' }
           : null,
       }));
 
@@ -421,7 +472,7 @@ export async function getReviews(filters = {}) {
     .from('reviews')
     .select(`
       *,
-      professors ( id, full_name, name ),
+      professors ( id, full_name ),
       courses ( id, name, code )
     `, { count: 'exact' });
 
@@ -438,13 +489,18 @@ export async function getReviews(filters = {}) {
   const { data, error, count } = await query;
   if (error) return { success: false, error: error.message };
 
-  // normaliza display_name del profe
-  const fixed = (data || []).map(r => ({
-    ...r,
-    professors: r.professors
-      ? { ...r.professors, display_name: r.professors.full_name || r.professors.name || '' }
-      : null,
-  }));
+  // normaliza profesores y courses cuando Supabase aplanó las columnas
+  const fixed = (data || []).map(r => {
+    // intentar reconstruir profesores/courses si vienen aplanados
+    const profObj = buildJoinedObject(r, 'professors') || r.professors || null;
+    const courseObj = buildJoinedObject(r, 'courses') || r.courses || null;
+
+    return {
+      ...r,
+      professors: profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null,
+      courses: courseObj ? { ...courseObj, name: courseObj.name || '' } : null,
+    };
+  });
 
   return { success: true, data: fixed, total: count ?? 0 };
 }
@@ -456,7 +512,7 @@ export async function getReviewById(id) {
     .select(`
       id, created_at, score, difficulty, would_take_again, comment, trimester,
       professor_id, course_id, user_id,
-      professors ( id, full_name, name ),
+      professors ( id, full_name ),
       courses ( id, name, code )
     `)
     .eq('id', id)
@@ -476,9 +532,9 @@ export async function getReviewById(id) {
     if (!e2) user = u;
   }
 
-  const prof = review.professors
-    ? { ...review.professors, display_name: review.professors.full_name || review.professors.name || '' }
-    : null;
+  const profObj = buildJoinedObject(review, 'professors') || review.professors || null;
+  const courseObj = buildJoinedObject(review, 'courses') || review.courses || null;
+  const prof = profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null;
 
   return { success: true, data: { ...review, professors: prof, user } };
 }
