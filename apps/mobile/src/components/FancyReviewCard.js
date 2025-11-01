@@ -1,4 +1,3 @@
-// apps/mobile/src/components/FancyReviewCard.js
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
@@ -7,8 +6,8 @@ const COLORS = {
   white: '#FFFFFF',
   text: '#111827',
   muted: '#6B7280',
-  primary: '#003087',   // Azul Unimet
-  accent: '#FF8200',    // Naranja Unimet
+  primary: '#003087',   
+  accent: '#FF8200',    
   border: '#E5E7EB',
   good: '#10B981',
   warn: '#F59E0B',

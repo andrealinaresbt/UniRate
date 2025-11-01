@@ -24,7 +24,7 @@ export default function ReportModal({ visible, onClose, reviewId }) {
   const [submitting, setSubmitting] = useState(false);
   const [alreadyReported, setAlreadyReported] = useState(false);
 
-  // ✅ Verificar si ya reportó esta reseña
+  //Verificar si ya reportó esta reseña
   useEffect(() => {
     if (visible && reviewId) {
       checkAlreadyReported();
@@ -61,7 +61,7 @@ export default function ReportModal({ visible, onClose, reviewId }) {
     }
   };
 
-  // ✅ Mostrar estado si ya reportó
+  //Mostrar estado si ya reportó
   if (alreadyReported) {
     return (
       <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -129,7 +129,7 @@ export default function ReportModal({ visible, onClose, reviewId }) {
   );
 }
 
-// Tus estilos se mantienen igual...
+
 const s = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', padding: 16, backgroundColor: 'rgba(0,0,0,0.35)' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },

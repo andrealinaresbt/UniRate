@@ -13,14 +13,14 @@ export const reportService = {
 
       const row = {
         review_id: payload.review_id,
-        user_id: user.id, // ✅ Se llama user_id, no reporting_user_id
+        user_id: user.id, 
         reason: payload.reason,
         comment: payload.comment || null,
-        status: 'pending' // ✅ Agregar el status
+        status: 'pending' 
       };
 
       const { data, error } = await supabase
-        .from('reports') // ✅ CAMBIAR: 'reports' en lugar de 'review_reports'
+        .from('reports') 
         .insert([row])
         .select()
         .single();
@@ -44,10 +44,10 @@ export const reportService = {
       if (!user?.id) return false;
 
       const { data, error } = await supabase
-        .from('reports') // ✅ CAMBIAR: 'reports' en lugar de 'review_reports'
+        .from('reports')  
         .select('id')
         .eq('review_id', reviewId)
-        .eq('user_id', user.id) // ✅ CAMBIAR: user_id en lugar de reporting_user_id
+        .eq('user_id', user.id) 
         .maybeSingle();
 
       return !!data;

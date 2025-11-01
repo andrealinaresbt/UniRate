@@ -22,7 +22,6 @@ export default function ReviewDetailScreen() {
   const route = useRoute();
   const { reviewId } = route.params || {};
 
-  // added hooks
   const navigation = useNavigation();
   const {
     user,
@@ -37,7 +36,6 @@ export default function ReviewDetailScreen() {
     try {
       if (route?.params?.openReport) {
         setReportModalVisible(true);
-        // clear the param so it doesn't reopen on remount
         navigation.setParams?.({ openReport: false });
       }
     } catch (e) {

@@ -1,4 +1,3 @@
-// components/FilterModal.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -239,7 +238,7 @@ export default function FilterModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="overFullScreen" // Cambiado a overFullScreen
+      presentationStyle="overFullScreen" 
       onRequestClose={onClose}
       supportedOrientations={['portrait']}
     >
