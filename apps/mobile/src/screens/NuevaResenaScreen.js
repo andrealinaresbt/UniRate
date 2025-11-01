@@ -574,65 +574,43 @@ export default function NuevaResenaScreen() {
               />
             </View>
 
-            {/* Puntuación */}
-            <View
-              onLayout={(e) => (anchors.current.puntuacionY = e.nativeEvent.layout.y)}
-            >
-              <Text style={styles.label}>Puntuación (1–5) *</Text>
-              <TextInput
-                style={styles.input}
-                value={calidad}
-                onFocus={() => scrollTo('puntuacionY')}
-                onChangeText={(txt) => {
-                  // solo 1–5
-                  const clean = txt.replace(/[^0-9]/g, '').slice(0, 1);
-                  setCalidad(clean);
-                  const n = parseInt(clean, 10);
-                  if ([1, 2, 3, 4, 5].includes(n)) {
-                    Keyboard.dismiss();
-                  }
-                }}
-                placeholder="Ej: 4"
-                keyboardType="number-pad"
-                maxLength={1}
-                placeholderTextColor={COLORS.muted}
-                returnKeyType="done"
-                blurOnSubmit
-                onSubmitEditing={Keyboard.dismiss}
-                inputAccessoryViewID={ACC_SCORE}
-              />
-              {/* Rápido: chips 1–5 */}
-              <QuickScaleRow value={calidad} onSelect={setCalidad} />
-            </View>
+              {/* Puntuación */}
+              <View onLayout={(e) => (anchors.current.puntuacionY = e.nativeEvent.layout.y)}>
+                <Text style={styles.label}>Puntuación (1–5) *</Text>
 
-            {/* Dificultad */}
-            <View
-              onLayout={(e) => (anchors.current.dificultadY = e.nativeEvent.layout.y)}
-            >
-              <Text style={styles.label}>Dificultad (1–5) *</Text>
-              <TextInput
-                style={styles.input}
-                value={dificultad}
-                onFocus={() => scrollTo('dificultadY')}
-                onChangeText={(txt) => {
-                  const clean = txt.replace(/[^0-9]/g, '').slice(0, 1);
-                  setDificultad(clean);
-                  const n = parseInt(clean, 10);
-                  if ([1, 2, 3, 4, 5].includes(n)) {
+                {/* Solo botones 1–5 */}
+                <QuickScaleRow
+                  value={calidad}
+                  onSelect={(val) => {
+                    setCalidad(val);   // '1'..'5' (string)
                     Keyboard.dismiss();
-                  }
-                }}
-                placeholder="Ej: 3"
-                keyboardType="number-pad"
-                maxLength={1}
-                placeholderTextColor={COLORS.muted}
-                returnKeyType="done"
-                blurOnSubmit
-                onSubmitEditing={Keyboard.dismiss}
-                inputAccessoryViewID={ACC_DIFF}
-              />
-              <QuickScaleRow value={dificultad} onSelect={setDificultad} />
-            </View>
+                  }}
+                />
+
+                <Text style={styles.helper}>
+                  {calidad ? `Seleccionado: ${calidad}` : 'Toca un número para seleccionar'}
+                </Text>
+              </View>
+
+
+              {/* Dificultad */}
+              <View onLayout={(e) => (anchors.current.dificultadY = e.nativeEvent.layout.y)}>
+                <Text style={styles.label}>Dificultad (1–5) *</Text>
+
+                {/* Solo botones 1–5 */}
+                <QuickScaleRow
+                  value={dificultad}
+                  onSelect={(val) => {
+                    setDificultad(val);       // '1'..'5' (string)
+                    Keyboard.dismiss();
+                  }}
+                />
+
+                <Text style={styles.helper}>
+                  {dificultad ? `Seleccionado: ${dificultad}` : 'Toca un número para seleccionar'}
+                </Text>
+              </View>
+
 
             {/* Volvería */}
             <View style={styles.row}>
@@ -809,9 +787,6 @@ export default function NuevaResenaScreen() {
                   </TouchableOpacity>
 
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity onPress={clearProfessorFilter} style={styles.headerBtnOutline}>
-                      <Text style={styles.headerBtnOutlineText}>Quitar filtro</Text>
-                    </TouchableOpacity>
 
                     <TouchableOpacity onPress={goChangeProfessor} style={styles.headerBtnPrimary}>
                       <Text style={styles.headerBtnPrimaryText}>Cambiar profesor</Text>
@@ -851,9 +826,6 @@ export default function NuevaResenaScreen() {
               {filteredMaterias.length === 0 ? (
                 <View style={styles.emptyWrap}>
                   <Text style={styles.emptyText}>No hay materias disponibles.</Text>
-                  <TouchableOpacity onPress={clearProfessorFilter} style={styles.emptyBtnOutline}>
-                    <Text style={styles.emptyBtnOutlineText}>Quitar filtro</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity onPress={goChangeProfessor} style={styles.emptyBtnPrimary}>
                     <Text style={styles.emptyBtnPrimaryText}>Cambiar profesor</Text>
                   </TouchableOpacity>
