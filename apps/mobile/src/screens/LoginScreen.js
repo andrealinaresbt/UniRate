@@ -1,13 +1,16 @@
 // screens/LoginScreen.jsx
-import React, { useState } from 'react'
+import { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ActivityIndicator, Platform, KeyboardAvoidingView
-} from 'react-native'
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View
+} from 'react-native';
 import { login, sendResetEmail } from '../services/AuthService';
-import { isUnimetCorreoEmail } from '../utils/email'
+import { isUnimetCorreoEmail } from '../utils/email';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation, route }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -31,7 +34,20 @@ export default function LoginScreen({ navigation }) {
       const session = await login(e, password)
       if (!session?.user?.id) throw new Error('Sesión inválida')
 
-      console.log('Login exitoso, navegando a Home')
+      console.log('Login exitoso')
+      const redirectTo = route?.params?.redirectTo;
+      if (redirectTo && redirectTo.type === 'report' && redirectTo.reviewId) {
+        // Navigate back to the review detail and open the report flow
+        try {
+          navigation.navigate('ReviewDetail', { reviewId: redirectTo.reviewId, openReport: true });
+          return;
+        } catch (e) {
+          // fallback to home
+          console.warn('Redirect to ReviewDetail failed, falling back to Home', e);
+        }
+      }
+
+      console.log('Navegando a Home')
       navigation.reset({ index: 0, routes: [{ name: 'Home' }] })
     } catch (err) {
       Alert.alert('Error', err.message || 'No se pudo iniciar sesión.')

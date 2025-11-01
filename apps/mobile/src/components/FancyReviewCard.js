@@ -7,8 +7,8 @@ const COLORS = {
   white: '#FFFFFF',
   text: '#111827',
   muted: '#6B7280',
-  primary: '#003087',
-  accent: '#FF8200',
+  primary: '#003087',   // Azul Unimet
+  accent: '#FF8200',    // Naranja Unimet
   border: '#E5E7EB',
   good: '#10B981',
   warn: '#F59E0B',
@@ -17,9 +17,9 @@ const COLORS = {
 
 function Stars({ value = 0, max = 5, size = 16 }) {
   const v = Math.max(0, Math.min(max, Number(value) || 0));
-  const full = Math.round((v / max) * 5); // normaliza a 5 estrellas
+  const full = Math.round((v / max) * 5);
   return (
-    <Text style={{ fontSize: size, lineHeight: size + 2 }}>
+    <Text style={{ fontSize: size, lineHeight: size + 2, color: COLORS.accent }}>
       {'★'.repeat(full)}{'☆'.repeat(5 - full)}
     </Text>
   );
@@ -57,6 +57,7 @@ export default function FancyReviewCard({ review }) {
           <Text style={styles.subtitle}>
             {courseCode ? `${courseCode} · ` : ''}{courseName}
           </Text>
+          <Text style={styles.date}>{`Trimestre ${trimester} • ${created}`}</Text>
         </View>
         <View style={styles.badgeScore}>
           <Text style={styles.badgeScoreValue}>{Number(score).toFixed(1)}</Text>
@@ -64,10 +65,8 @@ export default function FancyReviewCard({ review }) {
         </View>
       </View>
 
-      {/* Meta row */}
+      {/* Meta */}
       <View style={styles.metaRow}>
-        <View style={styles.chip}><Text style={styles.chipText}>📅 {created}</Text></View>
-        <View style={styles.chip}><Text style={styles.chipText}>🗓️ T{trimester}</Text></View>
         <View style={[styles.chip, again ? styles.chipOk : styles.chipWarn]}>
           <Text style={[styles.chipText, { color: again ? '#065F46' : '#78350F' }]}>
             {again ? 'La tomaría de nuevo' : 'No la tomaría de nuevo'}
@@ -75,29 +74,28 @@ export default function FancyReviewCard({ review }) {
         </View>
       </View>
 
-      {/* Stars + difficulty */}
+      {/* Satisfacción y Dificultad */}
       <View style={styles.section}>
         <View style={styles.kv}>
           <Text style={styles.kvLabel}>Satisfacción</Text>
           <View style={styles.kvValueRow}>
             <Stars value={score} />
-            <Text style={styles.kvValueNote}>({Number(score).toFixed(1)}/5)</Text>
+            <Text style={styles.kvValueNote}>{Number(score).toFixed(1)}/5</Text>
           </View>
         </View>
 
-        <View style={[styles.kv, { marginTop: 8 }]}>
+        <View style={[styles.kv, { marginTop: 12 }]}>
           <Text style={styles.kvLabel}>Dificultad</Text>
           <View style={{ marginTop: 6 }}>
             <Bar value={difficulty} />
-            <Text style={styles.kvValueNote}>({Number(difficulty).toFixed(1)}/5)</Text>
+            <Text style={styles.kvValueNote}>{Number(difficulty).toFixed(1)}/5</Text>
           </View>
         </View>
       </View>
 
-      {/* Comment */}
+      {/* Comentario */}
       {comment?.trim()?.length ? (
         <View style={styles.commentBox}>
-          <Text style={styles.commentMark}>“</Text>
           <Text style={styles.commentText}>{comment.trim()}</Text>
         </View>
       ) : (
@@ -110,43 +108,53 @@ export default function FancyReviewCard({ review }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: 20,
+    padding: 8,
+    borderWidth: 0,
     borderColor: COLORS.border,
-    padding: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    marginVertical: 8,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  title: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
-  subtitle: { fontSize: 13, color: COLORS.muted, marginTop: 2 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  title: { fontSize: 18, fontWeight: '700', color: COLORS.primary },
+  subtitle: { fontSize: 14, color: COLORS.text, marginTop: 2 },
+  date: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
   badgeScore: {
-    marginLeft: 12, alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6,
-    borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#F9FAFB',
+    marginLeft: 12,
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: COLORS.bg,
   },
-  badgeScoreValue: { fontSize: 18, fontWeight: '800', color: COLORS.text, lineHeight: 20 },
-  badgeScoreLabel: { fontSize: 10, color: COLORS.muted, marginTop: 2 },
-
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#F3F4F6' },
-  chipText: { fontSize: 12, color: COLORS.text },
-  chipOk: { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' },
-  chipWarn: { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' },
-
-  section: { marginTop: 12 },
+  badgeScoreValue: { fontSize: 20, fontWeight: '700', color: COLORS.primary },
+  badgeScoreLabel: { fontSize: 11, color: COLORS.muted, marginTop: 2 },
+  metaRow: { flexDirection: 'row', marginTop: 6 },
+  chip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  chipOk: { backgroundColor: '#E6F9F0' },
+  chipWarn: { backgroundColor: '#FFF7E6' },
+  chipText: { fontSize: 12, fontWeight: '500' },
+  section: { marginTop: 16 },
   kv: {},
-  kvLabel: { fontSize: 12, color: COLORS.muted },
-  kvValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  kvLabel: { fontSize: 13, color: COLORS.muted },
+  kvValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   kvValueNote: { fontSize: 12, color: COLORS.muted },
-
-  barTrack: { height: 8, backgroundColor: '#F3F4F6', borderRadius: 999, overflow: 'hidden' },
+  barTrack: {
+    height: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
   barFill: { height: 8, borderRadius: 999 },
-
   commentBox: {
-    marginTop: 14, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: 12, padding: 12, position: 'relative'
+    marginTop: 14,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 12,
   },
-  commentMark: {
-    position: 'absolute', top: -8, left: 10, fontSize: 26, color: COLORS.accent, fontWeight: '900'
-  },
-  commentText: { fontSize: 14, color: COLORS.text, lineHeight: 20, marginTop: 4 },
-  muted: { color: COLORS.muted, marginTop: 8 },
+  commentText: { fontSize: 14, color: COLORS.text, lineHeight: 20 },
+  muted: { color: COLORS.muted, marginTop: 10, fontSize: 13 },
 });

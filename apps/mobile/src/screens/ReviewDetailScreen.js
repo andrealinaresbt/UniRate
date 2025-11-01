@@ -1,7 +1,7 @@
 // apps/mobile/src/screens/ReviewDetailScreen.js
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FancyReviewCard from '../components/FancyReviewCard';
 import ReportModal from '../components/ReportModal';
@@ -31,6 +31,19 @@ export default function ReviewDetailScreen() {
   } = useAuth();
 
   const [reportModalVisible, setReportModalVisible] = useState(false);
+
+  // If navigated back with openReport param, open the modal automatically
+  useEffect(() => {
+    try {
+      if (route?.params?.openReport) {
+        setReportModalVisible(true);
+        // clear the param so it doesn't reopen on remount
+        navigation.setParams?.({ openReport: false });
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [route?.params?.openReport]);
 
   const openReportFlow = () => {
     if (!user?.id) {
@@ -84,7 +97,7 @@ export default function ReviewDetailScreen() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!reviewId) {
+      if (!reviewId || reviewId === '') {
         setState({ loading: false, error: 'No se recibió un ID de reseña.', review: null });
         return;
       }
@@ -128,31 +141,35 @@ export default function ReviewDetailScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Reseña completa</Text>
-          <Text style={styles.subtitle}>
-            {(r?.professors?.full_name || 'Profesor')} · {(r?.courses?.code || '')} {(r?.courses?.name || '')}
-          </Text>
-          <Text style={styles.subtitleSmall}>
-            Publicada el {new Date(r?.created_at).toLocaleDateString('es-ES')} · Trimestre {r?.trimester || '-'}
-          </Text>
-          <TouchableOpacity style={styles.reportButton} onPress={openReportFlow} accessibilityRole="button">
-            <Text style={styles.reportButtonText}>Reportar</Text>
-          </TouchableOpacity>
+        {/* Header card: concise, avoids repeating professor/course that the FancyReviewCard shows */}
+        <View style={[styles.card, styles.headerCard]}>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.title}>Reseña</Text>
+              <Text style={styles.subtitleSmall}>Publicada el {new Date(r?.created_at).toLocaleDateString('es-ES')}</Text>
+            </View>
+
+            <TouchableOpacity style={styles.reportPill} onPress={openReportFlow} accessibilityRole="button">
+              <Text style={styles.reportPillText}>Reportar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* subtle meta row (trimester + author) */}
+          <View style={styles.chipsRow}>
+            <View style={styles.chip}>
+              <Text style={styles.chipText}>Trimestre {r?.trimester || '-'}</Text>
+            </View>
+            {r?.user?.full_name ? (
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>Autor: {r.user.full_name}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
-        <View style={styles.card}>
+        {/* Review content card */}
+        <View style={[styles.card, styles.contentCard]}>
           <FancyReviewCard review={r} limited={false} />
-        </View>
-
-        <View style={styles.meta}>
-          <Text style={styles.metaTitle}>Detalles</Text>
-          <Text style={styles.metaRow}>Satisfacción: <Text style={styles.bold}>{r?.score ?? '-'}</Text></Text>
-          <Text style={styles.metaRow}>Dificultad: <Text style={styles.bold}>{r?.difficulty ?? '-'}</Text></Text>
-          <Text style={styles.metaRow}>¿La tomaría de nuevo?: <Text style={styles.bold}>{r?.would_take_again ? 'Sí' : 'No'}</Text></Text>
-          {r?.user?.full_name ? (
-            <Text style={styles.metaRow}>Autor: <Text style={styles.bold}>{r.user.full_name}</Text></Text>
-          ) : null}
         </View>
       </ScrollView>
       <ReportModal visible={reportModalVisible} onClose={() => setReportModalVisible(false)} reviewId={reviewId} />
@@ -164,25 +181,53 @@ const styles = StyleSheet.create({
   container: { padding: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { color: COLORS.muted, marginTop: 8 },
-  header: { marginBottom: 12, position: 'relative' },
-  title: { fontSize: 22, fontWeight: '800', color: COLORS.primary },
-  subtitle: { fontSize: 14, color: COLORS.text, marginTop: 4 },
-  subtitleSmall: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
-  card: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 8, marginTop: 6 },
-  meta: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, padding: 12, marginTop: 12 },
-  metaTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6, color: COLORS.primary },
-  metaRow: { fontSize: 14, color: COLORS.text, marginBottom: 4 },
-  bold: { fontWeight: '700' },
-  reportButton: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+  container: { padding: 16, paddingBottom: 32 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  muted: { color: COLORS.muted, marginTop: 8 },
+
+  /* base card */
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    // subtle elevation / shadow
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+      android: { elevation: 2 }
+    })
   },
-  reportButtonText: { color: '#E53935', fontWeight: '700' },
+
+  /* header */
+  headerCard: { marginTop: 6, paddingVertical: 14 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  title: { fontSize: 20, fontWeight: '800', color: COLORS.primary },
+  subtitleSmall: { fontSize: 12, color: COLORS.muted, marginTop: 4 },
+
+  reportPill: {
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#F1B0AD',
+  },
+  reportPillText: { color: '#E53935', fontWeight: '700' },
+
+  chipsRow: { flexDirection: 'row', marginTop: 12, gap: 8 },
+  chip: { backgroundColor: '#F8FAFC', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, borderColor: '#EFF3F7' },
+  chipText: { color: COLORS.muted, fontSize: 13 },
+
+  /* content */
+  contentCard: { padding: 8 },
+
+  /* details */
+  meta: { paddingVertical: 14 },
+  metaTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: COLORS.primary },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F3F4F6' },
+  metaLabel: { fontSize: 14, color: COLORS.muted },
+  metaValue: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  bold: { fontWeight: '700' },
 });
