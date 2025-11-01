@@ -1,12 +1,13 @@
 // apps/mobile/src/screens/ReviewDetailScreen.js
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import FancyReviewCard from '../components/FancyReviewCard';
+import ReportModal from '../components/ReportModal';
+import { useAuth } from '../services/AuthContext';
 import { getReviewById } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
-import FancyReviewCard from '../components/FancyReviewCard';
-import { useAuth } from '../services/AuthContext';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -28,6 +29,17 @@ export default function ReviewDetailScreen() {
     canAnonViewAnother, registerAnonReviewView,
     canAuthedViewAnother, registerAuthedReviewView
   } = useAuth();
+
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+
+  const openReportFlow = () => {
+    if (!user?.id) {
+      // Redirect to login; after login user can return manually or handle redirect param
+      try { navigation.navigate('Login', { redirectTo: { type: 'report', reviewId } }); } catch (_) {}
+      return;
+    }
+    setReportModalVisible(true);
+  };
 
   // gate: handle both authed and anon limits, replace to gate when blocked
   useFocusEffect(
@@ -124,6 +136,9 @@ export default function ReviewDetailScreen() {
           <Text style={styles.subtitleSmall}>
             Publicada el {new Date(r?.created_at).toLocaleDateString('es-ES')} · Trimestre {r?.trimester || '-'}
           </Text>
+          <TouchableOpacity style={styles.reportButton} onPress={openReportFlow} accessibilityRole="button">
+            <Text style={styles.reportButtonText}>Reportar</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
@@ -140,6 +155,7 @@ export default function ReviewDetailScreen() {
           ) : null}
         </View>
       </ScrollView>
+      <ReportModal visible={reportModalVisible} onClose={() => setReportModalVisible(false)} reviewId={reviewId} />
     </SafeAreaView>
   );
 }
@@ -148,7 +164,7 @@ const styles = StyleSheet.create({
   container: { padding: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { color: COLORS.muted, marginTop: 8 },
-  header: { marginBottom: 12 },
+  header: { marginBottom: 12, position: 'relative' },
   title: { fontSize: 22, fontWeight: '800', color: COLORS.primary },
   subtitle: { fontSize: 14, color: COLORS.text, marginTop: 4 },
   subtitleSmall: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
@@ -157,4 +173,16 @@ const styles = StyleSheet.create({
   metaTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6, color: COLORS.primary },
   metaRow: { fontSize: 14, color: COLORS.text, marginBottom: 4 },
   bold: { fontWeight: '700' },
+  reportButton: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  reportButtonText: { color: '#E53935', fontWeight: '700' },
 });

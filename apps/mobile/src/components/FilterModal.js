@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#F8F9FA',
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: '#e3e4e6ff',
     marginRight: 8,
     marginBottom: 8,
   },
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: '#e3e4e6ff',
     marginHorizontal: 15,
   },
   sliderContainer: {
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: '#e3e4e6ff',
   },
   dateRow: {
     flexDirection: 'row',
