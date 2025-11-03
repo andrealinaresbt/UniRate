@@ -1,34 +1,33 @@
-// apps/mobile/src/screens/NuevaResenaScreen.js
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Switch,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   InputAccessoryView,
-  TouchableWithoutFeedback,
   Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { ProfessorService } from '../services/professorService';
-import { ReviewService, updateReview, getReviewById } from '../services/reviewService';
-import { EventBus } from '../utils/EventBus';
 import { useAuth } from '../services/AuthContext';
+import { ProfessorService } from '../services/professorService';
 import { markReviewWritten } from '../services/ReviewAccess';
+import { getReviewById, ReviewService, updateReview } from '../services/reviewService';
+import { EventBus } from '../utils/EventBus';
 
-// ⬇️ NUEVO: importa helpers para cruzar Profesor↔Materia
+//importa helpers para cruzar Profesor↔Materia
 import {
   getCoursesByProfessor,
   getProfessorsByCourse,
@@ -111,7 +110,7 @@ export default function NuevaResenaScreen() {
   const [profesorId, setProfesorId] = useState(null);
   const [materiaId, setMateriaId] = useState(null);
 
-  // ⬇️ NUEVO: conjuntos permitidos según la otra selección (null = sin restricción)
+  // conjuntos permitidos según la otra selección (null = sin restricción)
   const [allowedCourseIds, setAllowedCourseIds] = useState(null);     // Set<number|string> | null
   const [allowedProfessorIds, setAllowedProfessorIds] = useState(null); // Set<number|string> | null
 
@@ -267,7 +266,6 @@ export default function NuevaResenaScreen() {
     setProfesorId(null);
     setAllowedCourseIds(null);
     setOpenCoursePicker(false);
-    // opcional: abrir directo el de profesor
     setOpenProfPicker(true);
   };
 
@@ -296,7 +294,7 @@ export default function NuevaResenaScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profesorId]);
 
-  // ⬇️ NUEVO: cuando seleccionas MATERIA → restringe profesores válidos
+  //cuando seleccionas MATERIA → restringe profesores válidos
   useEffect(() => {
     let canceled = false;
     (async () => {
@@ -352,7 +350,7 @@ export default function NuevaResenaScreen() {
       return;
     }
 
-    // ⬇️ NUEVO: validación servidor de la dupla profesor-curso
+    // validación servidor de la dupla profesor-curso
     try {
       const validPair = await isValidProfessorCoursePair(profesorId, materiaId);
       if (!validPair) {
@@ -453,7 +451,7 @@ export default function NuevaResenaScreen() {
       (p.full_name || '').toLowerCase().includes(q)
     );
 
-    // ⬇️ NUEVO: si hay restricción por materia seleccionada, filtramos
+    // si hay restricción por materia seleccionada, filtramos
     if (allowedProfessorIds instanceof Set) {
       lista = lista.filter(p => allowedProfessorIds.has(p.id));
     }
@@ -471,7 +469,7 @@ export default function NuevaResenaScreen() {
       return name.includes(q) || code.includes(q);
     });
 
-    // ⬇️ NUEVO: si hay restricción por profesor seleccionado, filtramos
+    // si hay restricción por profesor seleccionado, filtramos
     if (allowedCourseIds instanceof Set) {
       lista = lista.filter(m => allowedCourseIds.has(m.id));
     }
@@ -519,7 +517,10 @@ export default function NuevaResenaScreen() {
             <Text style={styles.title}>Publicar Reseña</Text>
 
             {/* Profesor */}
-            <Text style={styles.label}>Profesor *</Text>
+            <Text style={styles.label}>
+              Profesor
+              <Text style={styles.asterisk}> *</Text>
+            </Text>
             <TouchableOpacity
               style={styles.select}
               onPress={() => {
@@ -537,7 +538,10 @@ export default function NuevaResenaScreen() {
             </TouchableOpacity>
 
             {/* Materia */}
-            <Text style={styles.label}>Materia *</Text>
+            <Text style={styles.label}>
+              Materia
+              <Text style={styles.asterisk}> *</Text>
+            </Text>
             <TouchableOpacity
               style={styles.select}
               onPress={() => {
@@ -576,7 +580,11 @@ export default function NuevaResenaScreen() {
 
               {/* Puntuación */}
               <View onLayout={(e) => (anchors.current.puntuacionY = e.nativeEvent.layout.y)}>
-                <Text style={styles.label}>Puntuación (1–5) *</Text>
+                <Text style={styles.label}>
+                  Puntuación
+                  <Text style={styles.asterisk}> *</Text>
+                </Text>
+                <Text style={styles.helper2}>1: menor puntuación    5: mayor puntuación</Text>
 
                 {/* Solo botones 1–5 */}
                 <QuickScaleRow
@@ -595,7 +603,11 @@ export default function NuevaResenaScreen() {
 
               {/* Dificultad */}
               <View onLayout={(e) => (anchors.current.dificultadY = e.nativeEvent.layout.y)}>
-                <Text style={styles.label}>Dificultad (1–5) *</Text>
+                <Text style={styles.label}>
+                  Dificultad
+                  <Text style={styles.asterisk}> *</Text>
+                </Text>
+                <Text style={styles.helper2}>1: menor dificultad        5: mayor dificultad</Text>
 
                 {/* Solo botones 1–5 */}
                 <QuickScaleRow
@@ -627,7 +639,7 @@ export default function NuevaResenaScreen() {
             <View
               onLayout={(e) => (anchors.current.comentarioY = e.nativeEvent.layout.y)}
             >
-              <Text style={styles.label}>Comentario (máx. 300)</Text>
+              <Text style={styles.label}>Comentario</Text>
               <TextInput
                 style={[styles.input, { minHeight: 90 }]}
                 value={comentario}
@@ -772,15 +784,13 @@ export default function NuevaResenaScreen() {
         visible={openCoursePicker}
         transparent
         animationType="fade"
-        onRequestClose={closeCoursePicker} // 👈 usamos la función que agregamos
+        onRequestClose={closeCoursePicker}
       >
-        {/* 👇 esto permite cerrar el modal tocando fuera */}
         <TouchableWithoutFeedback onPress={closeCoursePicker}>
           <View style={styles.modalOverlay}>
-                            {/* 👇 esto evita que el tap dentro cierre el modal */}
                             <TouchableWithoutFeedback onPress={() => {}}>
                               <View style={styles.modalCard}>
-                                {/* ===== Header de acciones (nuevo) ===== */}
+                                {/* ===== Header de acciones ===== */}
                 <View style={styles.modalHeaderRow}>
                   <TouchableOpacity onPress={closeCoursePicker} style={styles.headerBtnGhost}>
                     <Text style={styles.headerBtnGhostText}>Cancelar</Text>
@@ -912,6 +922,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     color: COLORS.text,
   },
+  asterisk: {
+    color: '#E53935',
+    fontWeight: '700',
+  },
   labelInline: { fontSize: 14, fontWeight: '600', color: COLORS.text },
   input: {
     borderWidth: 1,
@@ -933,6 +947,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.muted,
     alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 8,
+  },
+  helper2: {
+    fontSize: 12,
+    color: COLORS.muted,
+    alignSelf: 'flex-start',
     marginTop: -4,
     marginBottom: 8,
   },
