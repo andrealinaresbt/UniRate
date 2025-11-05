@@ -53,6 +53,15 @@ function buildJoinedObject(row, tableName) {
   return out;
 }
 
+// Número de reportes tras el cual una reseña se considera oculta
+// Change to 1 for testing; set to 3 for production
+// Número de reportes tras el cual una reseña se considera oculta
+// Production value: 3
+export const REPORT_THRESHOLD = 3;
+
+// import countReportsFor from reportService via dynamic require to avoid circular import at top
+const { countReportsFor } = require('./reportService');
+
 /**
  * ===============================
  *  HELPERS M2M: PROFESOR ↔ CURSO
@@ -502,7 +511,22 @@ export async function getReviews(filters = {}) {
     };
   });
 
-  return { success: true, data: fixed, total: count ?? 0 };
+  // Contar reports por reseña y filtrar las que exceden el umbral
+  try {
+    const ids = (fixed || []).map(r => r.id).filter(Boolean);
+    const counts = await countReportsFor(ids);
+    const filtered = (fixed || []).filter(r => {
+      const c = counts[r.id] || 0;
+      // adjuntar conteo por si queremos mostrarlo
+      r.reports_count = c;
+      return c < REPORT_THRESHOLD;
+    });
+    return { success: true, data: filtered, total: filtered.length };
+  } catch (e) {
+    // en caso de error en conteo, devolvemos la lista sin filtrar pero con reports_count = 0
+    console.error('Error counting reports:', e);
+    return { success: true, data: fixed, total: count ?? 0 };
+  }
 }
 
 // Obtener una reseña por ID (y el usuario en consulta aparte)
@@ -536,7 +560,16 @@ export async function getReviewById(id) {
   const courseObj = buildJoinedObject(review, 'courses') || review.courses || null;
   const prof = profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null;
 
-  return { success: true, data: { ...review, professors: prof, user } };
+  // contar reports para esta reseña y marcar como oculta si excede umbral
+  try {
+    const counts = await countReportsFor([review.id]);
+    const c = counts[review.id] || 0;
+    const hidden = c >= REPORT_THRESHOLD;
+    const payload = { ...review, professors: prof, user, reports_count: c, hidden };
+    return { success: true, data: payload };
+  } catch (e) {
+    return { success: true, data: { ...review, professors: prof, user } };
+  }
 }
 
 // Actualizar una reseña por ID

@@ -73,6 +73,8 @@ export default function AdminScreen({ navigation }) {
       <Tile emoji="🔗" title="Vincular Materias ↔ Profesores" subtitle="Alta/Baja de relaciones" onPress={() => navigation.navigate('ManageLinks')} />
 
       <View style={{ height: 18 }} />
+      <Text style={styles.h2}>Moderación</Text>
+      <Tile emoji="👁️‍🗨️" title="Reseñas ocultadas" subtitle="Revisar y restaurar reseñas marcadas" onPress={() => navigation.navigate('FlaggedReviews')} borderColor="#7c3aed" />
 
       <Text style={styles.h2}>Usuario</Text>
       <Tile emoji="⭐" title="Mis reseñas" subtitle="Historial de tus reseñas" onPress={() => navigation.navigate('myReviews')} />

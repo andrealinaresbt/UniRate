@@ -167,7 +167,14 @@ export default function ReviewDetailScreen() {
 
         {/* Review content card */}
         <View style={[styles.card, styles.contentCard]}>
-          <FancyReviewCard review={r} limited={false} />
+          {r?.hidden ? (
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', textAlign: 'center' }}>Esta reseña ha sido ocultada por múltiples reportes y está bajo revisión.</Text>
+              <Text style={{ color: '#6B7280', marginTop: 10, textAlign: 'center' }}>Si crees que esto es un error, contacta a soporte.</Text>
+            </View>
+          ) : (
+            <FancyReviewCard review={r} limited={false} />
+          )}
         </View>
       </ScrollView>
       <ReportModal visible={reportModalVisible} onClose={() => setReportModalVisible(false)} reviewId={reviewId} />

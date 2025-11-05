@@ -1,5 +1,7 @@
 // services/filterService.js
 import { supabase } from './supabaseClient';
+import { countReportsFor } from './reportService';
+import { REPORT_THRESHOLD } from './reviewService';
 
 export const filterService = {
   async getFilteredReviews(filters = {}, context = {}) {
@@ -84,8 +86,18 @@ export const filterService = {
       console.error('Supabase query error:', error);
       throw error;
     }
-    
-    return data || [];
+
+    const rows = data || [];
+    // filter out reviews that exceeded report threshold
+    try {
+      const ids = rows.map(r => r.id).filter(Boolean);
+      const counts = await countReportsFor(ids);
+      const filtered = rows.filter(r => (counts[r.id] || 0) < REPORT_THRESHOLD);
+      return filtered;
+    } catch (e) {
+      console.error('Error counting reports in filterService:', e);
+      return rows;
+    }
   },
 
   async getProfessorCourses(professorId) {

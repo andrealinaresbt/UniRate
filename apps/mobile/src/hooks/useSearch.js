@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { countReportsFor } from '../services/reportService';
+import { REPORT_THRESHOLD } from '../services/reviewService';
 
 export function useSearch() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +33,8 @@ export function useSearch() {
       const { data: profs, error: profError } = await supabase
         .from('professors')
         // traer reviews con ambos campos por seguridad: score (course-level) y score_teacher
-        .select('*, reviews(score, score_teacher, professor_id)')
+        // incluir id para poder filtrar por reports
+        .select('*, reviews(id, score, score_teacher, professor_id)')
         .ilike('full_name', `%${term}%`);
 
       if (profError) throw profError;
@@ -39,23 +42,33 @@ export function useSearch() {
       // Para cada profesor, consulta reviews filtrando por su id
       const professorsFormatted = await Promise.all(
         (profs || []).map(async (p) => {
-          const { data: profReviews, error: profReviewsError } = await supabase
-            .from('reviews')
-            // fetch both score (course-level) and score_teacher so we can prefer score
-            .select('score, score_teacher')
-            .eq('professor_id', p.id);
+          // profs may already include nested reviews from the initial select
+          let profReviews = p.reviews || [];
+          // ensure we have ids to count reports
+          if (!profReviews.length) {
+            const { data: fetched } = await supabase
+              .from('reviews')
+              .select('id, score, score_teacher')
+              .eq('professor_id', p.id);
+            profReviews = fetched || [];
+          }
 
-          const review_count = profReviews?.length || 0;
+          // filter out hidden reviews using report counts
+          const ids = profReviews.map(r => r.id).filter(Boolean);
+          const counts = await countReportsFor(ids);
+          const visible = (profReviews || []).filter(r => (counts[r.id] || 0) < REPORT_THRESHOLD);
+
+          const review_count = visible.length || 0;
           const avg_score =
             review_count > 0
               ? (
-                  profReviews.reduce((sum, r) => {
-                    // prefer course-level `score`, fallback to `score_teacher` when missing
+                  visible.reduce((sum, r) => {
                     const val = Number(r.score ?? r.score_teacher ?? 0);
                     return sum + (isNaN(val) ? 0 : val);
                   }, 0) / review_count
                 ).toFixed(2)
               : null;
+
           return {
             ...p,
             type: 'professor',
@@ -78,13 +91,17 @@ export function useSearch() {
         (courses || []).map(async (c) => {
           const { data: reviews } = await supabase
             .from('reviews')
-            .select('score')
+            .select('id, score')
             .eq('course_id', c.id);
 
-          const total = reviews?.length || 0;
+          const ids = (reviews || []).map(r => r.id).filter(Boolean);
+          const counts = await countReportsFor(ids);
+          const visible = (reviews || []).filter(r => (counts[r.id] || 0) < REPORT_THRESHOLD);
+
+          const total = visible.length || 0;
           const avg_score =
             total > 0
-              ? (reviews.reduce((sum, r) => sum + (r.score || 0), 0) / total).toFixed(2)
+              ? (visible.reduce((sum, r) => sum + (Number(r.score || 0)), 0) / total).toFixed(2)
               : null;
 
           return { ...c, type: 'course', avg_score, review_count: total };

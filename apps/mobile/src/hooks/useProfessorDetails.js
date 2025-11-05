@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { countReportsFor } from '../services/reportService';
+import { REPORT_THRESHOLD } from '../services/reviewService';
 
 // Debug flag: set to true to log normalization details
 const DEBUG_PROF_HOOK = false;
@@ -76,16 +78,31 @@ export function useProfessorDetails(professorId) {
         })
       );
 
-      setReviews(reviewsWithCourse);
+      // Count reports and filter out hidden reviews
+      let used = reviewsWithCourse;
+      try {
+        const ids = reviewsWithCourse.map(r => r.id).filter(Boolean);
+        const counts = await countReportsFor(ids);
+        const filtered = reviewsWithCourse.filter(r => {
+          const c = counts[r.id] || 0;
+          r.reports_count = c;
+          return c < REPORT_THRESHOLD;
+        });
+        used = filtered;
+        setReviews(filtered);
+      } catch (e) {
+        console.error('Error counting reports in useProfessorDetails', e);
+        setReviews(reviewsWithCourse);
+      }
 
       // 4) Calcular promedios y porcentaje "volverían a tomar"
-      if (reviewsWithCourse.length > 0) {
-        const total = reviewsWithCourse.length;
+      if (used.length > 0) {
+        const total = used.length;
   // Use normalized fields to compute aggregates
   // Use course-level score for professor satisfaction as requested
-  const sumRating = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.score) || 0), 0);
-        const sumDifficulty = reviewsWithCourse.reduce((acc, r) => acc + (Number(r.difficulty) || 0), 0);
-        const takeAgainCount = reviewsWithCourse.reduce(
+  const sumRating = used.reduce((acc, r) => acc + (Number(r.score) || 0), 0);
+        const sumDifficulty = used.reduce((acc, r) => acc + (Number(r.difficulty) || 0), 0);
+        const takeAgainCount = used.reduce(
           (acc, r) => acc + ((r.would_take_again || r.volveria || r.take_again) ? 1 : 0),
           0
         );
@@ -95,7 +112,7 @@ export function useProfessorDetails(professorId) {
         setAvgDifficulty(avgDiffVal.toFixed(2));
         setWouldTakeAgain(Math.round((takeAgainCount / total) * 100));
         if (DEBUG_PROF_HOOK && avgDiffVal === 0) {
-          console.log('[useProfessorDetails] professorId', professorId, 'normalized reviews', reviewsWithCourse);
+          console.log('[useProfessorDetails] professorId', professorId, 'normalized reviews', used);
           console.log('[useProfessorDetails] computed avgDifficulty', avgDiffVal);
         }
       } else {

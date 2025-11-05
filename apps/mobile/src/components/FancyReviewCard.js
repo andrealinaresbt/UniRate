@@ -37,6 +37,14 @@ function Bar({ value = 0, max = 5 }) {
 }
 
 export default function FancyReviewCard({ review }) {
+  if (review?.hidden) {
+    return (
+      <View style={styles.card}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', textAlign: 'center' }}>Esta reseña ha sido ocultada por múltiples reportes y está bajo revisión.</Text>
+        <Text style={{ color: COLORS.muted, marginTop: 8, textAlign: 'center' }}>Si crees que esto es un error, contacta a soporte.</Text>
+      </View>
+    );
+  }
   const prof = review?.professors?.full_name || 'Profesor';
   const courseCode = review?.courses?.code || '';
   const courseName = review?.courses?.name || 'Materia';
