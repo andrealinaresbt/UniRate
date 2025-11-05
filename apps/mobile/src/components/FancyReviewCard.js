@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../services/AuthContext';
 import { VoteService } from '../services/voteService';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -40,6 +41,7 @@ function Bar({ value = 0, max = 5 }) {
 }
 
 export default function FancyReviewCard({ review }) {
+  const navigation = useNavigation();
   const { user } = useAuth();
   
   // Vote state
@@ -80,7 +82,12 @@ export default function FancyReviewCard({ review }) {
 
   const handleVote = async () => {
     if (!user?.id) {
-      Alert.alert('Inicia sesión', 'Debes iniciar sesión para votar en reseñas.');
+      // navigate to Login and include redirect so the app can return to this review after auth
+      try {
+        navigation.navigate('Login', { redirectTo: { type: 'vote', reviewId: review?.id } });
+      } catch (_) {
+        try { navigation.navigate('SignIn', { redirectTo: { type: 'vote', reviewId: review?.id } }); } catch (__ ) {}
+      }
       return;
     }
 

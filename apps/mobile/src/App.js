@@ -26,6 +26,13 @@ import DeleteCourseScreen from './screens/DeleteCourseScreen';
 import FavoritesScreen from './screens/FavoritesScreen'
 
 import { AuthProvider } from './services/AuthContext';
+import { Alert } from 'react-native';
+const _origAlert = Alert.alert;
+Alert.alert = (...args) => {
+  console.log('ALERT:', args);
+  console.trace(); // shows file/line in Metro
+  return _origAlert(...args);
+};
 
 const Stack = createNativeStackNavigator();
 

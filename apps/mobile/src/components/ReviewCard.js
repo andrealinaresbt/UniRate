@@ -61,10 +61,13 @@ export default function ReviewCard({ review, limited = false }) {
   const handleVote = async (e) => {
     e?.stopPropagation?.();
     
-    if (!user?.id) {
-      Alert.alert('Inicia sesión', 'Debes iniciar sesión para votar en reseñas.');
-      return;
-    }
+    console.log('handleVote pressed', { userId: user?.id, reviewId: review?.id });
+// before the not-logged guard
+if (!user?.id) {
+  console.log('handleVote: not logged in -> showing alert');
+  Alert.alert('Inicia sesión XYZ', 'texto único XYZ');
+  return;
+}
 
     if (!review?.id) return;
 
