@@ -7,7 +7,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard
 } from 'react-native';
 import reportService from '../services/reportService';
 
@@ -83,56 +88,89 @@ export default function ReportModal({ visible, onClose, reviewId }) {
   // Modal original para nuevos reportes
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={s.overlay}>
-        <View style={s.card}>
-          <View style={s.header}>
-            <Text style={s.title}>Reportar reseña</Text>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={s.overlay}>
+            <TouchableWithoutFeedback>
+              <ScrollView 
+                contentContainerStyle={s.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={s.card}>
+                  <View style={s.header}>
+                    <Text style={s.title}>Reportar reseña</Text>
+                  </View>
+
+                  <Text style={s.label}>Selecciona un motivo *</Text>
+                  {REASONS.map(r => (
+                    <TouchableOpacity 
+                      key={r} 
+                      style={[s.reasonRow, reason === r && s.reasonRowActive]} 
+                      onPress={() => {
+                        setReason(r);
+                        Keyboard.dismiss();
+                      }}
+                    >
+                      <Text style={[s.reasonText, reason === r && s.reasonTextActive]}>{r}</Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  <Text style={[s.label, { marginTop: 12 }]}>Comentario (opcional)</Text>
+                  <TextInput
+                    style={s.textarea}
+                    value={comment}
+                    onChangeText={setComment}
+                    multiline
+                    placeholder="Detalles adicionales..."
+                    maxLength={300}
+                    returnKeyType="done"
+                    blurOnSubmit={true}
+                    onSubmitEditing={Keyboard.dismiss}
+                  />
+
+                  <View style={s.actions}>
+                    <TouchableOpacity 
+                      style={[s.btn, s.cancel]} 
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        onClose();
+                      }} 
+                      disabled={submitting}
+                    >
+                      <Text style={s.cancelTxt}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[s.btn, (!reason || submitting) && { opacity: 0.6 }]} 
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        handleSend();
+                      }} 
+                      disabled={!reason || submitting}
+                    >
+                      {submitting ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Enviar</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
+            </TouchableWithoutFeedback>
           </View>
-
-          <Text style={s.label}>Selecciona un motivo *</Text>
-          {REASONS.map(r => (
-            <TouchableOpacity 
-              key={r} 
-              style={[s.reasonRow, reason === r && s.reasonRowActive]} 
-              onPress={() => setReason(r)}
-            >
-              <Text style={[s.reasonText, reason === r && s.reasonTextActive]}>{r}</Text>
-            </TouchableOpacity>
-          ))}
-
-          <Text style={[s.label, { marginTop: 12 }]}>Comentario (opcional)</Text>
-          <TextInput
-            style={s.textarea}
-            value={comment}
-            onChangeText={setComment}
-            multiline
-            placeholder="Detalles adicionales..."
-            maxLength={300}
-          />
-
-          <View style={s.actions}>
-            <TouchableOpacity style={[s.btn, s.cancel]} onPress={onClose} disabled={submitting}>
-              <Text style={s.cancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[s.btn, (!reason || submitting) && { opacity: 0.6 }]} 
-              onPress={handleSend} 
-              disabled={!reason || submitting}
-            >
-              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={s.btnTxt}>Enviar</Text>}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 
 const s = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'center', padding: 16, backgroundColor: 'rgba(0,0,0,0.35)' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16 },
+  overlay: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 16 },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, maxHeight: '90%' },
   header: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 18, fontWeight: '700', color: '#111827' },
   label: { marginTop: 12, fontWeight: '600', color: '#374151' },
