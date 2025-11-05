@@ -2,6 +2,69 @@
 import { supabase } from './supabaseClient';
 import { CourseProfessorService } from './courseProfessorService'; // opcional: si no existe, el fallback interno se encarga
 
+// === Word filter (50–100 words, medium tolerance) ===
+const MAX_COMMENT_LEN = 300;
+
+// start with empty list — you'll populate it manually later
+let FORBIDDEN = ["mierda","imbécil","imbeciles","estúpido","estúpidos","idiota","idiotas","tonto","tontos","burro","burros",
+  "inútil","inútiles","asqueroso","asquerosos","payaso","payasos","ridículo","ridículos","tarado","tarados",
+  "baboso","babosos","feo","feos","desgraciado","desgraciados","maldito","malditos","pendejo","cabrón","cabron",
+  "bruto","bruta","brutos","mediocre","mediocres","retrasado","retrasados","corrupto","corruptos","sinvergüenza",
+  "cerdo","estafador","estafadores","hipócrita","hipócritas","mentiroso","mentirosa","mentirosos","patético","patetico",
+  "odioso","odiosa","grosero","groseros","sucio","sucios","asno","asnos","vago","vagos","flojo","floja","infeliz",
+  "repugnante","nefasto","escoria","rata","ratas","cobarde","malnacido","zorro","maleducado","arrogante","presumido",
+  "chismoso","falsos","falso","tramposo","tramposa","tramposos","groseros","engreído","engreidos","miserable","miserables",
+  "malcriado","malcriados","ladrona","ladron","ratero","mentirosa","pervertido","pervertida","racista","machista","acosador",
+  "aprovechado","malvado","abusador","agresivo","mentecato","tarugo","cretino","soplón","charlatán","charlatan","embustero",
+  "descarado","ignorante","zángano","hostigador","chantajista","traidor","manipulador","abusiva","corrupta","fastidiosa",
+  "pesada","necia","antipático","detestable","perverso","cruel","repulsivo","repulsiva","despreciable","vulgar","deshonesto",
+  "corruptazo","idiotas","tontos","estúpidas","idiotas","perverso","cruel","repulsiva","repulsivo","bruto","bruta","desgraciado",
+  "despreciable","vulgar","agresiva","descarada","aprovechada","inútiles","brutos","deshonesto","falso","tramposo","corruptazo"];
+
+// leet / obfuscation map
+const LEET = { '0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@':'a','$':'s','!':'i','+':'t' };
+
+function normalizeForMatch(text = '') {
+  let s = String(text).normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase();
+  s = s.split('').map(ch => LEET[ch] ?? ch).join('');
+  s = s.replace(/[^a-z0-9]+/g,' ');
+  s = s.replace(/(.)\1{2,}/g,'$1$1'); // compress 3+ repeats
+  return s.trim();
+}
+function esc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+function buildFilterRegex(words) {
+  const w = (words || []).map(x => String(x || '').normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase());
+  const exact = w.map(x => `\\b${esc(x)}\\b`);
+  const obf  = w.map(x => `\\b${x.split('').map(esc).join("\\W*")}\\b`);
+  return new RegExp([...exact,...obf].join('|'), 'iu');
+}
+let FILTER_RE = buildFilterRegex(FORBIDDEN);
+
+export function setForbiddenWords(list) {
+  FORBIDDEN = Array.isArray(list) ? Array.from(new Set(list.map(s => String(s).normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase()))) : [];
+  FILTER_RE = buildFilterRegex(FORBIDDEN);
+}
+
+export function validateReviewComment(text = '') {
+  const t = String(text || '');
+  if (t.length > MAX_COMMENT_LEN) return { ok:false, reason:`Comment > ${MAX_COMMENT_LEN} chars`, hits:[] };
+  const norm = normalizeForMatch(t);
+  const re = new RegExp(FILTER_RE.source, 'giu');
+  const hits = [];
+  let m;
+  while ((m = re.exec(norm)) !== null) {
+    hits.push(m[0]);
+    if (m.index === re.lastIndex) re.lastIndex++;
+  }
+  if (hits.length) return { ok:false, reason:'Forbidden language detected', hits:[...new Set(hits)] };
+  return { ok:true, reason:null, hits:[] };
+}
+
+export const ReviewValidators = {
+  maxCommentLen: MAX_COMMENT_LEN,
+  validateComment: validateReviewComment,
+  setForbiddenWords,
+};
 /**
  * Reconstruye un objeto joineado cuando Supabase devuelve columnas aplanadas
  * Ej: { 'professors_1.name': '...' } o { 'professors_name': '...' }
@@ -262,6 +325,13 @@ export const ReviewService = {
       const volveria = !!reviewData?.volveria;
       const comentario = reviewData?.comentario ?? null;
 
+      // server-side comment validation to prevent bad content even if client is bypassed
+      const v = validateReviewComment(comentario || '');
+      if (!v.ok) {
+        const first = v.hits?.[0] ? `: ${v.hits[0]}` : '';
+        throw new Error(v.reason + first);
+      }
+      
       // score: si no viene, usa calidad
       const score = Number.isFinite(reviewData?.score)
         ? Number(reviewData.score)
