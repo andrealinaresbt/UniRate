@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../services/AuthContext';
 import { ProfessorService } from '../services/professorService';
 import { markReviewWritten } from '../services/ReviewAccess';
-import { getReviewById, ReviewService, updateReview } from '../services/reviewService';
+import { getReviewById, ReviewService, updateReview, ReviewValidators } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
 
 //importa helpers para cruzar Profesor↔Materia
@@ -105,6 +105,8 @@ export default function NuevaResenaScreen() {
   // catálogos
   const [profesores, setProfesores] = useState([]);
   const [materias, setMaterias] = useState([]);
+
+  const [commentError, setCommentError] = useState(null); // string|null
 
   // selección
   const [profesorId, setProfesorId] = useState(null);
@@ -338,6 +340,10 @@ export default function NuevaResenaScreen() {
       return 'Dificultad debe estar entre 1 y 5.';
     if (comentario.length > 300)
       return 'Comentario máximo 300 caracteres.';
+
+    const v = ReviewValidators.validateComment(comentario || '');
+    if (!v.ok) return v.hits?.length ? `${v.reason}: ${v.hits[0]}` : v.reason;
+
     return null;
   };
 
@@ -644,7 +650,11 @@ export default function NuevaResenaScreen() {
                 style={[styles.input, { minHeight: 90 }]}
                 value={comentario}
                 onFocus={() => scrollTo('comentarioY',20)}
-                onChangeText={setComentario}
+                onChangeText={(t) => {
+                  setComentario(t);
+                  const v = ReviewValidators.validateComment(t);
+                  setCommentError(!v.ok ? (v.hits?.length ? `${v.reason}: ${v.hits[0]}` : v.reason) : null);
+                }}
                 placeholder="Escribe tu experiencia…"
                 multiline
                 maxLength={300}
@@ -656,6 +666,11 @@ export default function NuevaResenaScreen() {
                 inputAccessoryViewID={ACC_COMMENT} 
               />
               <Text style={styles.helper}>{comentario.length}/300 caracteres</Text>
+              {commentError ? (
+                <Text style={[styles.helper, { color: '#E53935', alignSelf: 'flex-start' }]}>
+                  {commentError}
+                </Text>
+              ) : null}
             </View>
 
             {/* Etiquetas */}
@@ -681,8 +696,8 @@ export default function NuevaResenaScreen() {
             </View>
             {/* Botón EN EL CONTENIDO (no fijo) */}
             <TouchableOpacity
-              style={[styles.button, submitting && { opacity: 0.6 }]}
-              disabled={submitting}
+              style={[styles.button, (submitting || commentError) && { opacity: 0.6 }]}
+              disabled={submitting || !!commentError}
               onPress={() => {
                 Keyboard.dismiss();
                 handleSubmit();

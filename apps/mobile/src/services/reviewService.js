@@ -2,56 +2,69 @@
 import { supabase } from './supabaseClient';
 import { CourseProfessorService } from './courseProfessorService'; // opcional: si no existe, el fallback interno se encarga
 
-/**
- * Reconstruye un objeto joineado cuando Supabase devuelve columnas aplanadas
- * Ej: { 'professors_1.name': '...' } o { 'professors_name': '...' }
- * @param {object} row
- * @param {string} tableName e.g. 'professors'
- */
-function buildJoinedObject(row, tableName) {
-  if (!row || !tableName) return null;
-  // si ya viene como objeto anidado
-  if (row[tableName] && typeof row[tableName] === 'object') return row[tableName];
+// === Word filter (50–100 words, medium tolerance) ===
+const MAX_COMMENT_LEN = 300;
 
-  const lowerTable = tableName.toLowerCase();
-  const keys = Object.keys(row || []);
-  // buscar keys que contengan el nombre de la tabla (ej: 'professors_1.name', 'professors_name')
-  const candidates = keys.filter(k => k.toLowerCase().includes(lowerTable));
-  if (!candidates.length) return null;
+// start with empty list — you'll populate it manually later
+let FORBIDDEN = ["mierda","imbécil","imbeciles","estúpido","estúpidos","idiota","idiotas","tonto","tontos","burro","burros",
+  "inútil","inútiles","asqueroso","asquerosos","payaso","payasos","ridículo","ridículos","tarado","tarados",
+  "baboso","babosos","feo","feos","desgraciado","desgraciados","maldito","malditos","pendejo","cabrón","cabron",
+  "bruto","bruta","brutos","mediocre","mediocres","retrasado","retrasados","corrupto","corruptos","sinvergüenza",
+  "cerdo","estafador","estafadores","hipócrita","hipócritas","mentiroso","mentirosa","mentirosos","patético","patetico",
+  "odioso","odiosa","grosero","groseros","sucio","sucios","asno","asnos","vago","vagos","flojo","floja","infeliz",
+  "repugnante","nefasto","escoria","rata","ratas","cobarde","malnacido","zorro","maleducado","arrogante","presumido",
+  "chismoso","falsos","falso","tramposo","tramposa","tramposos","groseros","engreído","engreidos","miserable","miserables",
+  "malcriado","malcriados","ladrona","ladron","ratero","mentirosa","pervertido","pervertida","racista","machista","acosador",
+  "aprovechado","malvado","abusador","agresivo","mentecato","tarugo","cretino","soplón","charlatán","charlatan","embustero",
+  "descarado","ignorante","zángano","hostigador","chantajista","traidor","manipulador","abusiva","corrupta","fastidiosa",
+  "pesada","necia","antipático","detestable","perverso","cruel","repulsivo","repulsiva","despreciable","vulgar","deshonesto",
+  "corruptazo","idiotas","tontos","estúpidas","idiotas","perverso","cruel","repulsiva","repulsivo","bruto","bruta","desgraciado",
+  "despreciable","vulgar","agresiva","descarada","aprovechada","inútiles","brutos","deshonesto","falso","tramposo","corruptazo"];
 
-  const out = {};
-  // Extraer campos de cada key candidata. Soporta formatos:
-  // - professors.name
-  // - professors_1.name
-  // - professors_1_name
-  // - professors_name
-  const re = new RegExp(`${lowerTable}(?:[_\\d]+)?[._]?(.*)$`, 'i');
-  candidates.forEach((k) => {
-    const m = k.toString().toLowerCase().match(re);
-    let field = null;
-    if (m && m[1]) {
-      field = m[1];
-    } else {
-      // fallback: try splitting by last separator
-      const parts = k.split(/[._]/);
-      field = parts.length ? parts[parts.length - 1] : k;
-    }
-    if (!field) return;
-    // normalize common field names
-    if (field === 'name' || field === 'full_name' || field === 'full-name') {
-      out.full_name = out.full_name || row[k];
-    } else if (field === 'id' || field === 'professor_id' || field === 'course_id') {
-      out.id = out.id || row[k];
-    } else {
-      // assign generically
-      out[field] = out[field] || row[k];
-    }
-  });
+// leet / obfuscation map
+const LEET = { '0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@':'a','$':'s','!':'i','+':'t' };
 
-  // si no devolvimos nada útil, regresar null
-  if (Object.keys(out).length === 0) return null;
-  return out;
+function normalizeForMatch(text = '') {
+  let s = String(text).normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase();
+  s = s.split('').map(ch => LEET[ch] ?? ch).join('');
+  s = s.replace(/[^a-z0-9]+/g,' ');
+  s = s.replace(/(.)\1{2,}/g,'$1$1'); // compress 3+ repeats
+  return s.trim();
 }
+function esc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+function buildFilterRegex(words) {
+  const w = (words || []).map(x => String(x || '').normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase());
+  const exact = w.map(x => `\\b${esc(x)}\\b`);
+  const obf  = w.map(x => `\\b${x.split('').map(esc).join("\\W*")}\\b`);
+  return new RegExp([...exact,...obf].join('|'), 'iu');
+}
+let FILTER_RE = buildFilterRegex(FORBIDDEN);
+
+export function setForbiddenWords(list) {
+  FORBIDDEN = Array.isArray(list) ? Array.from(new Set(list.map(s => String(s).normalize('NFKD').replace(/\p{M}/gu,"").toLowerCase()))) : [];
+  FILTER_RE = buildFilterRegex(FORBIDDEN);
+}
+
+export function validateReviewComment(text = '') {
+  const t = String(text || '');
+  if (t.length > MAX_COMMENT_LEN) return { ok:false, reason:`Comment > ${MAX_COMMENT_LEN} chars`, hits:[] };
+  const norm = normalizeForMatch(t);
+  const re = new RegExp(FILTER_RE.source, 'giu');
+  const hits = [];
+  let m;
+  while ((m = re.exec(norm)) !== null) {
+    hits.push(m[0]);
+    if (m.index === re.lastIndex) re.lastIndex++;
+  }
+  if (hits.length) return { ok:false, reason:'Forbidden language detected', hits:[...new Set(hits)] };
+  return { ok:true, reason:null, hits:[] };
+}
+
+export const ReviewValidators = {
+  maxCommentLen: MAX_COMMENT_LEN,
+  validateComment: validateReviewComment,
+  setForbiddenWords,
+};
 
 /**
  * ===============================
@@ -481,91 +494,5 @@ export async function getReviews(filters = {}) {
   if (user_id) query = query.eq('user_id', user_id);
   if (course_id) query = query.eq('course_id', course_id);
   if (typeof min_rating === 'number') query = query.gte('calidad', min_rating);
-  if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_difficulty);
+  if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_dificultad);}
 
-  // orden + paginación
-  query = query.order(orderBy, { ascending: order === 'asc' }).range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
-  if (error) return { success: false, error: error.message };
-
-  // normaliza profesores y courses cuando Supabase aplanó las columnas
-  const fixed = (data || []).map(r => {
-    // intentar reconstruir profesores/courses si vienen aplanados
-    const profObj = buildJoinedObject(r, 'professors') || r.professors || null;
-    const courseObj = buildJoinedObject(r, 'courses') || r.courses || null;
-
-    return {
-      ...r,
-      professors: profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null,
-      courses: courseObj ? { ...courseObj, name: courseObj.name || '' } : null,
-    };
-  });
-
-  return { success: true, data: fixed, total: count ?? 0 };
-}
-
-// Obtener una reseña por ID (y el usuario en consulta aparte)
-export async function getReviewById(id) {
-  const { data: review, error } = await supabase
-    .from('reviews')
-    .select(`
-      id, created_at, score, difficulty, would_take_again, comment, trimester,
-      professor_id, course_id, user_id,
-      professors ( id, full_name ),
-      courses ( id, name, code )
-    `)
-    .eq('id', id)
-    .single();
-
-  if (error) return { success: false, error: error.message };
-  if (!review) return { success: false, error: 'No existe la reseña' };
-
-  // usuario en consulta aparte (tu tabla es "users")
-  let user = null;
-  if (review.user_id) {
-    const { data: u, error: e2 } = await supabase
-      .from('users')
-      .select('id, full_name, email')
-      .eq('id', review.user_id)
-      .single();
-    if (!e2) user = u;
-  }
-
-  const profObj = buildJoinedObject(review, 'professors') || review.professors || null;
-  const courseObj = buildJoinedObject(review, 'courses') || review.courses || null;
-  const prof = profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null;
-
-  return { success: true, data: { ...review, professors: prof, user } };
-}
-
-// Actualizar una reseña por ID
-export async function updateReview(id, payload = {}) {
-  try {
-    const { data, error } = await supabase
-      .from('reviews')
-      .update(payload)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) return { success: false, error: error.message };
-    return { success: true, data };
-  } catch (e) {
-    return { success: false, error: e.message || String(e) };
-  }
-}
-
-// Eliminar una reseña por ID
-export async function deleteReview(id) {
-  try {
-    const { error } = await supabase
-      .from('reviews')
-      .delete()
-      .eq('id', id);
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e.message || String(e) };
-  }
-}
