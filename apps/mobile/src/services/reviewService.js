@@ -2,24 +2,42 @@
 import { supabase } from './supabaseClient';
 import { CourseProfessorService } from './courseProfessorService'; // opcional: si no existe, el fallback interno se encarga
 
-// === Word filter (50–100 words, medium tolerance) ===
+// === Word filter ===
 const MAX_COMMENT_LEN = 300;
 
 // start with empty list — you'll populate it manually later
-let FORBIDDEN = ["mierda","imbécil","imbeciles","estúpido","estúpidos","idiota","idiotas","tonto","tontos","burro","burros",
-  "inútil","inútiles","asqueroso","asquerosos","payaso","payasos","ridículo","ridículos","tarado","tarados",
-  "baboso","babosos","feo","feos","desgraciado","desgraciados","maldito","malditos","pendejo","cabrón","cabron",
-  "bruto","bruta","brutos","mediocre","mediocres","retrasado","retrasados","corrupto","corruptos","sinvergüenza",
-  "cerdo","estafador","estafadores","hipócrita","hipócritas","mentiroso","mentirosa","mentirosos","patético","patetico",
-  "odioso","odiosa","grosero","groseros","sucio","sucios","asno","asnos","vago","vagos","flojo","floja","infeliz",
-  "repugnante","nefasto","escoria","rata","ratas","cobarde","malnacido","zorro","maleducado","arrogante","presumido",
-  "chismoso","falsos","falso","tramposo","tramposa","tramposos","groseros","engreído","engreidos","miserable","miserables",
-  "malcriado","malcriados","ladrona","ladron","ratero","mentirosa","pervertido","pervertida","racista","machista","acosador",
-  "aprovechado","malvado","abusador","agresivo","mentecato","tarugo","cretino","soplón","charlatán","charlatan","embustero",
-  "descarado","ignorante","zángano","hostigador","chantajista","traidor","manipulador","abusiva","corrupta","fastidiosa",
-  "pesada","necia","antipático","detestable","perverso","cruel","repulsivo","repulsiva","despreciable","vulgar","deshonesto",
-  "corruptazo","idiotas","tontos","estúpidas","idiotas","perverso","cruel","repulsiva","repulsivo","bruto","bruta","desgraciado",
-  "despreciable","vulgar","agresiva","descarada","aprovechada","inútiles","brutos","deshonesto","falso","tramposo","corruptazo"];
+let FORBIDDEN = [
+    "mierda", "imbécil", "imbeciles", "estúpido", "estúpidos", "idiota", "idiotas", "tonto", "tontos", "burro", "burros",
+    "inútil", "inútiles", "asqueroso", "asquerosos", "payaso", "payasos", "ridículo", "ridículos", "tarado", "tarados",
+    "baboso", "babosos", "feo", "feos", "desgraciado", "desgraciados", "maldito", "malditos", "pendejo", "cabrón", "cabron",
+    "bruto", "bruta", "brutos", "mediocre", "mediocres", "retrasado", "retrasados", "corrupto", "corruptos", "sinvergüenza",
+    "cerdo", "estafador", "estafadores", "hipócrita", "hipócritas", "mentiroso", "mentirosa", "mentirosos", "patético", "patetico",
+    "odioso", "odiosa", "grosero", "groseros", "sucio", "sucios", "asno", "asnos", "vago", "vagos", "flojo", "floja", "infeliz",
+    "repugnante", "nefasto", "escoria", "rata", "ratas", "cobarde", "malnacido", "zorro", "maleducado", "arrogante", "presumido",
+    "chismoso", "falsos", "falso", "tramposo", "tramposa", "tramposos", "engreído", "engreidos", "miserable", "miserables",
+    "malcriado", "malcriados", "ladrona", "ladron", "ratero", "pervertido", "pervertida", "racista", "machista", "acosador",
+    "aprovechado", "malvado", "abusador", "agresivo", "mentecato", "tarugo", "cretino", "soplón", "charlatán", "charlatan", "embustero",
+    "descarado", "ignorante", "zángano", "hostigador", "chantajista", "traidor", "manipulador", "abusiva", "corrupta", "fastidiosa",
+    "pesada", "necia", "antipático", "detestable", "perverso", "cruel", "repulsivo", "repulsiva", "despreciable", "vulgar",
+    "corruptazo", "estúpidas", "agresiva", "aprovechada", "ladrona", "puta", "coño", 
+    "verga", "vergación", "verguero", "vergeishion", "muérgano", "muergana", "coñoemadre", "hijueputa", "mamagüevo", "mamahuevo", 
+    "jalabolas", "lamebotas", "chupamedias", "chupaculo", "toche", "babieco", "cara e feto", "chola e burro", "arrecho", 
+    "malparido", "mamón", "cagón", "cagapalo", "cretinos", "necios", "taruga", "tarugas", "mentecata", "lerdo", "lerda", "lerdos", 
+    "despojo", "sabandija", "gangster", "mafioso", "mafiosa", "mafiosos", "sicario", "delincuente", "criminal", "marrano", 
+    "loco", "loca", "enfermizo", "enfermiza", "bocón", "bocona", "gritón", "gritona", "chivato", "chivata",
+    "maricón", "marico", "trolo", "tortillera", "travesti", "transformista", "zorra", "perra", "facil", "regalada", "prostituta", 
+    "arpía", "bruja", "calientahuevos",  "niche", "marginal", "arrimado", "coñoetumadre", "pajuo", 
+    "pajua", "pajuos", "jala bola", "mamarracho", "gafo", "gafos", "gofa", "gofos", "huevón", "güevón", "guevón", "huevon", 
+    "güevona", "güevones", "huevones", "chalequeador", "maluco", "guircho", "pinga", "pingo", "picha", "cogerte", "cogió", 
+    "coge", "culo", "culito", "culote", "culazo", "zopenco", "zoquete", "badulaque", "cenutrio", "chimbo", "ñángara", 
+    "sifrino", "chata", "bestia", "animal", "fantoche", "fanfarrón", "rata de dos patas", "desgracia", "bestialidad", "pelabola", 
+    "cochina", "cochino", "charlatanería", "tarúpido", "ladilloso", "ladillosa", "marica", "sapa", "sapito", "mojón", "mojonero", 
+    "maricon", "homosexual", "lesbiana", "gay",
+    "chingar", "chinga", "chingado", "chingadera", "chingaquedito", "chinguesu", "valer verga", "a la verga", "pinche", 
+    "culero", "naco", "teporocho", "malacopa", "boludo", "boluda", "pelotudo", "pelotuda", "mogólico", "orto", "choto", 
+    "salame", "gil", "giles", "gonorrea", "líchigo", "garbimba", "gorrero", "lámpara", "boleta", "caído del zarzo", 
+    "traqueto", "patán", "memo", "pavoso", "malaleche", "caradura", "mamerto", "trimaldito"
+];
 
 // leet / obfuscation map
 const LEET = { '0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','@':'a','$':'s','!':'i','+':'t' };
