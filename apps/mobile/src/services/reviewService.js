@@ -65,6 +65,56 @@ export const ReviewValidators = {
   validateComment: validateReviewComment,
   setForbiddenWords,
 };
+/**
+ * Reconstruye un objeto joineado cuando Supabase devuelve columnas aplanadas
+ * Ej: { 'professors_1.name': '...' } o { 'professors_name': '...' }
+ * @param {object} row
+ * @param {string} tableName e.g. 'professors'
+ */
+function buildJoinedObject(row, tableName) {
+  if (!row || !tableName) return null;
+  // si ya viene como objeto anidado
+  if (row[tableName] && typeof row[tableName] === 'object') return row[tableName];
+
+  const lowerTable = tableName.toLowerCase();
+  const keys = Object.keys(row || []);
+  // buscar keys que contengan el nombre de la tabla (ej: 'professors_1.name', 'professors_name')
+  const candidates = keys.filter(k => k.toLowerCase().includes(lowerTable));
+  if (!candidates.length) return null;
+
+  const out = {};
+  // Extraer campos de cada key candidata. Soporta formatos:
+  // - professors.name
+  // - professors_1.name
+  // - professors_1_name
+  // - professors_name
+  const re = new RegExp(`${lowerTable}(?:[_\\d]+)?[._]?(.*)$`, 'i');
+  candidates.forEach((k) => {
+    const m = k.toString().toLowerCase().match(re);
+    let field = null;
+    if (m && m[1]) {
+      field = m[1];
+    } else {
+      // fallback: try splitting by last separator
+      const parts = k.split(/[._]/);
+      field = parts.length ? parts[parts.length - 1] : k;
+    }
+    if (!field) return;
+    // normalize common field names
+    if (field === 'name' || field === 'full_name' || field === 'full-name') {
+      out.full_name = out.full_name || row[k];
+    } else if (field === 'id' || field === 'professor_id' || field === 'course_id') {
+      out.id = out.id || row[k];
+    } else {
+      // assign generically
+      out[field] = out[field] || row[k];
+    }
+  });
+
+  // si no devolvimos nada útil, regresar null
+  if (Object.keys(out).length === 0) return null;
+  return out;
+}
 
 /**
  * ===============================
@@ -275,6 +325,13 @@ export const ReviewService = {
       const volveria = !!reviewData?.volveria;
       const comentario = reviewData?.comentario ?? null;
 
+      // server-side comment validation to prevent bad content even if client is bypassed
+      const v = validateReviewComment(comentario || '');
+      if (!v.ok) {
+        const first = v.hits?.[0] ? `: ${v.hits[0]}` : '';
+        throw new Error(v.reason + first);
+      }
+      
       // score: si no viene, usa calidad
       const score = Number.isFinite(reviewData?.score)
         ? Number(reviewData.score)
@@ -494,5 +551,91 @@ export async function getReviews(filters = {}) {
   if (user_id) query = query.eq('user_id', user_id);
   if (course_id) query = query.eq('course_id', course_id);
   if (typeof min_rating === 'number') query = query.gte('calidad', min_rating);
-  if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_dificultad);}
+  if (typeof min_difficulty === 'number') query = query.gte('dificultad', min_difficulty);
 
+  // orden + paginación
+  query = query.order(orderBy, { ascending: order === 'asc' }).range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+  if (error) return { success: false, error: error.message };
+
+  // normaliza profesores y courses cuando Supabase aplanó las columnas
+  const fixed = (data || []).map(r => {
+    // intentar reconstruir profesores/courses si vienen aplanados
+    const profObj = buildJoinedObject(r, 'professors') || r.professors || null;
+    const courseObj = buildJoinedObject(r, 'courses') || r.courses || null;
+
+    return {
+      ...r,
+      professors: profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null,
+      courses: courseObj ? { ...courseObj, name: courseObj.name || '' } : null,
+    };
+  });
+
+  return { success: true, data: fixed, total: count ?? 0 };
+}
+
+// Obtener una reseña por ID (y el usuario en consulta aparte)
+export async function getReviewById(id) {
+  const { data: review, error } = await supabase
+    .from('reviews')
+    .select(`
+      id, created_at, score, difficulty, would_take_again, comment, trimester,
+      professor_id, course_id, user_id,
+      professors ( id, full_name ),
+      courses ( id, name, code )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  if (!review) return { success: false, error: 'No existe la reseña' };
+
+  // usuario en consulta aparte (tu tabla es "users")
+  let user = null;
+  if (review.user_id) {
+    const { data: u, error: e2 } = await supabase
+      .from('users')
+      .select('id, full_name, email')
+      .eq('id', review.user_id)
+      .single();
+    if (!e2) user = u;
+  }
+
+  const profObj = buildJoinedObject(review, 'professors') || review.professors || null;
+  const courseObj = buildJoinedObject(review, 'courses') || review.courses || null;
+  const prof = profObj ? { ...profObj, full_name: profObj.full_name || profObj.name || '' } : null;
+
+  return { success: true, data: { ...review, professors: prof, user } };
+}
+
+// Actualizar una reseña por ID
+export async function updateReview(id, payload = {}) {
+  try {
+    const { data, error } = await supabase
+      .from('reviews')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// Eliminar una reseña por ID
+export async function deleteReview(id) {
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message || String(e) };
+  }
+}
