@@ -66,6 +66,7 @@ export default function ReviewDetailScreen() {
               navigation.replace('ReviewAccessGate', { reviewId });
               return;
             }
+            if (user?.id) console.log('[registerAuthedReviewView call]', { userId: user.id, reviewId });
             await registerAuthedReviewView(user.id, reviewId);
             return;
           }
@@ -77,10 +78,10 @@ export default function ReviewDetailScreen() {
             navigation.replace('ReviewAccessGate', { reviewId });
             return;
           }
-          
+
           if (reviewId) {
-            console.log('[registerAuthedReviewView call]', { userId: user.id, reviewId });
-            await registerAuthedReviewView(user.id, reviewId);
+            // correct function for anonymous views
+            await registerAnonReviewView(reviewId);
           }
         } catch (err) {
           console.error('view gate error:', err);
@@ -95,24 +96,35 @@ export default function ReviewDetailScreen() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!reviewId || reviewId === '') {
-        setState({ loading: false, error: 'No se recibió un ID de reseña.', review: null });
-        return;
+      try {
+        if (!reviewId) {
+          if (mounted) setState({ loading: false, error: 'No se recibió un ID de reseña.', review: null });
+          return;
+        }
+        const res = await getReviewById(reviewId);
+        if (!mounted) return;
+        if (res && res.success) {
+          setState({ loading: false, error: null, review: res.data });
+        } else {
+          setState({ loading: false, error: res?.error || 'Error cargando la reseña', review: null });
+        }
+      } catch (e) {
+        if (mounted) setState({ loading: false, error: e?.message || String(e), review: null });
       }
-      const res = await getReviewById(reviewId);
-      if (!mounted) return;
-      if (!res.success) setState({ loading: false, error: res.error || 'Error cargando la reseña', review: null });
-      else setState({ loading: false, error: null, review: res.data });
     })();
+
     const off = EventBus.on('review:updated', ({ id } = {}) => {
-      if (!mounted) return;
-      if (id && id === reviewId) {
-        (async () => {
+      if (!mounted || id !== reviewId) return;
+      (async () => {
+        try {
           const r = await getReviewById(reviewId);
           if (!mounted) return;
-          if (r.success) setState({ loading: false, error: null, review: r.data });
-        })();
-      }
+          if (r && r.success) setState({ loading: false, error: null, review: r.data });
+          else setState({ loading: false, error: r?.error || 'Error cargando la reseña', review: null });
+        } catch (e) {
+          if (mounted) setState({ loading: false, error: e?.message || String(e), review: null });
+        }
+      })();
     });
 
     return () => { mounted = false; off(); };

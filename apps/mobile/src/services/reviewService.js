@@ -57,7 +57,7 @@ function buildJoinedObject(row, tableName) {
 // Change to 1 for testing; set to 3 for production
 // Número de reportes tras el cual una reseña se considera oculta
 // Production value: 3
-export const REPORT_THRESHOLD = 3;
+export const REPORT_THRESHOLD = 1;
 
 // import countReportsFor from reportService via dynamic require to avoid circular import at top
 const { countReportsFor } = require('./reportService');

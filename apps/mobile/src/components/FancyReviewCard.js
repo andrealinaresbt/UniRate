@@ -1,5 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useAuth } from '../services/AuthContext';
+import { VoteService } from '../services/voteService';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -37,6 +41,7 @@ function Bar({ value = 0, max = 5 }) {
 }
 
 export default function FancyReviewCard({ review }) {
+
   if (review?.hidden) {
     return (
       <View style={styles.card}>
@@ -45,6 +50,16 @@ export default function FancyReviewCard({ review }) {
       </View>
     );
   }
+
+  const navigation = useNavigation();
+  const { user } = useAuth();
+  
+  // Vote state
+  const [hasVoted, setHasVoted] = useState(false);
+  const [voteCount, setVoteCount] = useState(0);
+  const [votingInProgress, setVotingInProgress] = useState(false);
+
+
   const prof = review?.professors?.full_name || 'Profesor';
   const courseCode = review?.courses?.code || '';
   const courseName = review?.courses?.name || 'Materia';
@@ -54,6 +69,71 @@ export default function FancyReviewCard({ review }) {
   const difficulty = review?.difficulty ?? review?.dificultad ?? 0;
   const again = !!(review?.would_take_again ?? review?.volveria);
   const comment = review?.comment ?? review?.comentario ?? '';
+
+  // Load vote status on mount
+  useEffect(() => {
+    loadVoteStatus();
+  }, [review?.id, user?.id]);
+
+  const loadVoteStatus = async () => {
+    if (!review?.id) return;
+    
+    try {
+      const count = await VoteService.getVoteCount(review.id);
+      setVoteCount(count);
+
+      if (user?.id) {
+        const voted = await VoteService.hasUserVoted(review.id, user.id);
+        setHasVoted(voted);
+      }
+    } catch (error) {
+      console.error('Error loading vote status:', error);
+    }
+  };
+
+  const handleVote = async () => {
+    if (!user?.id) {
+      // navigate to Login and include redirect so the app can return to this review after auth
+      try {
+        navigation.navigate('Login', { redirectTo: { type: 'vote', reviewId: review?.id } });
+      } catch (_) {
+        try { navigation.navigate('SignIn', { redirectTo: { type: 'vote', reviewId: review?.id } }); } catch (__ ) {}
+      }
+      return;
+    }
+
+    if (!review?.id) return;
+    if (votingInProgress) return;
+
+    setVotingInProgress(true);
+
+    // Optimistic UI update
+    const previousHasVoted = hasVoted;
+    const previousVoteCount = voteCount;
+    
+    setHasVoted(!hasVoted);
+    setVoteCount(hasVoted ? voteCount - 1 : voteCount + 1);
+
+    try {
+      const result = await VoteService.toggleVote(review.id, user.id);
+      
+      if (result.success) {
+        setHasVoted(result.voted);
+        setVoteCount(result.voteCount);
+      } else {
+        setHasVoted(previousHasVoted);
+        setVoteCount(previousVoteCount);
+        Alert.alert('Error', result.error || 'No se pudo registrar tu voto.');
+      }
+    } catch (error) {
+      setHasVoted(previousHasVoted);
+      setVoteCount(previousVoteCount);
+      console.error('Error voting:', error);
+      Alert.alert('Error', 'No se pudo registrar tu voto.');
+    } finally {
+      setVotingInProgress(false);
+    }
+  };
 
   return (
     <View style={styles.card}>
@@ -108,6 +188,30 @@ export default function FancyReviewCard({ review }) {
       ) : (
         <Text style={styles.muted}>Sin comentario del estudiante.</Text>
       )}
+
+      {/* Vote section */}
+      <View style={styles.voteSection}>
+        <TouchableOpacity
+          style={styles.voteButton}
+          onPress={handleVote}
+          disabled={votingInProgress}
+          activeOpacity={0.7}
+        >
+          <Icon 
+            name={hasVoted ? "thumb-up" : "thumb-up-off-alt"} 
+            size={18} 
+            color={hasVoted ? COLORS.primary : COLORS.muted} 
+          />
+          <Text style={[styles.voteText, hasVoted && styles.voteTextActive]}>
+            Útil
+          </Text>
+        </TouchableOpacity>
+        {voteCount > 0 && (
+          <Text style={styles.voteCount}>
+            {voteCount} {voteCount === 1 ? 'persona encontró' : 'personas encontraron'} esto útil
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
@@ -164,4 +268,38 @@ const styles = StyleSheet.create({
   },
   commentText: { fontSize: 14, color: COLORS.text, lineHeight: 20 },
   muted: { color: COLORS.muted, marginTop: 10, fontSize: 13 },
+  
+  // Vote section
+  voteSection: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  voteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#F6F7F8',
+    marginRight: 12,
+  },
+  voteText: {
+    fontSize: 13,
+    color: COLORS.muted,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  voteTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  voteCount: {
+    fontSize: 12,
+    color: COLORS.muted,
+    flex: 1,
+  },
 });

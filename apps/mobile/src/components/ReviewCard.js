@@ -1,9 +1,10 @@
 // components/ReviewCard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, TouchableOpacity, Alert, Modal, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../services/AuthContext';
 import { deleteReview } from '../services/reviewService';
+import { VoteService } from '../services/voteService';
 import { EventBus } from '../utils/EventBus';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 
@@ -21,6 +22,11 @@ export default function ReviewCard({ review, limited = false }) {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // Vote state
+  const [hasVoted, setHasVoted] = useState(false);
+  const [voteCount, setVoteCount] = useState(0);
+  const [votingInProgress, setVotingInProgress] = useState(false);
 
   const profName = review?.professors?.full_name || 'Profesor';
   const courseName = review?.courses?.name || 'Materia';
@@ -28,6 +34,77 @@ export default function ReviewCard({ review, limited = false }) {
   const comment = limited ? '🔒 Inicia sesión para ver el comentario completo.' : (review?.comentario || '—');
 
   const isOwner = !!(user?.id && review?.user_id && user.id === review.user_id);
+
+  // Load vote status on mount
+  useEffect(() => {
+    loadVoteStatus();
+  }, [review?.id, user?.id]);
+
+  const loadVoteStatus = async () => {
+    if (!review?.id) return;
+    
+    try {
+      // Get vote count
+      const count = await VoteService.getVoteCount(review.id);
+      setVoteCount(count);
+
+      // Check if current user has voted (only if logged in)
+      if (user?.id) {
+        const voted = await VoteService.hasUserVoted(review.id, user.id);
+        setHasVoted(voted);
+      }
+    } catch (error) {
+      console.error('Error loading vote status:', error);
+    }
+  };
+
+  const handleVote = async (e) => {
+    e?.stopPropagation?.();
+    
+    console.log('handleVote pressed', { userId: user?.id, reviewId: review?.id });
+// before the not-logged guard
+if (!user?.id) {
+  console.log('handleVote: not logged in -> showing alert');
+  Alert.alert('Inicia sesión XYZ', 'texto único XYZ');
+  return;
+}
+
+    if (!review?.id) return;
+
+    if (votingInProgress) return; // Prevent double-clicks
+
+    setVotingInProgress(true);
+
+    // Optimistic UI update
+    const previousHasVoted = hasVoted;
+    const previousVoteCount = voteCount;
+    
+    setHasVoted(!hasVoted);
+    setVoteCount(hasVoted ? voteCount - 1 : voteCount + 1);
+
+    try {
+      const result = await VoteService.toggleVote(review.id, user.id);
+      
+      if (result.success) {
+        // Update with actual values from server
+        setHasVoted(result.voted);
+        setVoteCount(result.voteCount);
+      } else {
+        // Revert optimistic update on error
+        setHasVoted(previousHasVoted);
+        setVoteCount(previousVoteCount);
+        Alert.alert('Error', result.error || 'No se pudo registrar tu voto. Intenta de nuevo.');
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setHasVoted(previousHasVoted);
+      setVoteCount(previousVoteCount);
+      console.error('Error voting:', error);
+      Alert.alert('Error', 'No se pudo registrar tu voto. Intenta de nuevo.');
+    } finally {
+      setVotingInProgress(false);
+    }
+  };
 
   const handlePress = () => {
     if (!review?.id) return;
@@ -84,6 +161,32 @@ export default function ReviewCard({ review, limited = false }) {
 
       <Text style={[styles.comment, limited && { color: COLORS.muted }]}>{comment}</Text>
 
+      {/* Vote button */}
+      {!limited && (
+        <View style={styles.voteSection}>
+          <TouchableOpacity
+            style={styles.voteButton}
+            onPress={handleVote}
+            disabled={votingInProgress}
+            activeOpacity={0.7}
+          >
+            <Icon 
+              name={hasVoted ? "thumb-up" : "thumb-up-off-alt"} 
+              size={18} 
+              color={hasVoted ? COLORS.primary : COLORS.muted} 
+            />
+            <Text style={[styles.voteText, hasVoted && styles.voteTextActive]}>
+              Útil
+            </Text>
+          </TouchableOpacity>
+          {voteCount > 0 && (
+            <Text style={styles.voteCount}>
+              {voteCount} {voteCount === 1 ? 'persona encontró' : 'personas encontraron'} esto útil
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Bottom sheet menu */}
       <Modal
         visible={menuOpen}
@@ -129,9 +232,43 @@ const styles = StyleSheet.create({
   subheader: { fontSize: 12, color: COLORS.muted, marginBottom: 8 },
   rowStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   badge: { fontSize: 12, color: COLORS.text, backgroundColor: '#F6F7F8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 8 },
-  comment: { fontSize: 14, color: COLORS.text },
+  comment: { fontSize: 14, color: COLORS.text, marginBottom: 8 },
 
   dotButton: { padding: 6, borderRadius: 8 },
+
+  // Vote section
+  voteSection: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  voteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#F6F7F8',
+    marginRight: 12,
+  },
+  voteText: {
+    fontSize: 13,
+    color: COLORS.muted,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  voteTextActive: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  voteCount: {
+    fontSize: 12,
+    color: COLORS.muted,
+    flex: 1,
+  },
 
   // bottom sheet
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
