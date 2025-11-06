@@ -161,3 +161,63 @@ export async function dismissReportsForReview(reviewId) {
     return { success: false, error: e.message || String(e) };
   }
 }
+
+/* =========================
+   NUEVAS FUNCIONES PEDIDAS
+   ========================= */
+
+// Ajusta si tus nombres de columnas son otros:
+const REPORT_REVIEW_FK = 'review_id'; // FK en reports
+const REVIEW_HIDDEN_FIELD = 'hidden'; // boolean en reviews
+
+// 1) Eliminar (DELETE) todos los reportes asociados a una reseña
+export async function purgeReportsForReview(reviewId) {
+  if (!reviewId) return { success: false, error: 'reviewId required' };
+  try {
+    const { error } = await supabase
+      .from('reports')
+      .delete()
+      .eq(REPORT_REVIEW_FK, reviewId);
+    if (error) throw error;
+    try { EventBus.emit('review:updated', { id: reviewId }); } catch (_) {}
+    return { success: true };
+  } catch (e) {
+    console.error('purgeReportsForReview error', e);
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// 2) Volver visible la reseña (hidden = false)
+export async function unhideReview(reviewId) {
+  if (!reviewId) return { success: false, error: 'reviewId required' };
+  try {
+    const payload = { [REVIEW_HIDDEN_FIELD]: false };
+    const { error } = await supabase
+      .from('reviews')
+      .update(payload)
+      .eq('id', reviewId);
+    if (error) throw error;
+    try { EventBus.emit('review:updated', { id: reviewId }); } catch (_) {}
+    return { success: true };
+  } catch (e) {
+    console.error('unhideReview error', e);
+    return { success: false, error: e.message || String(e) };
+  }
+}
+
+// 3) Eliminar definitivamente la reseña
+export async function deleteReview(reviewId) {
+  if (!reviewId) return { success: false, error: 'reviewId required' };
+  try {
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', reviewId);
+    if (error) throw error;
+    try { EventBus.emit('review:deleted', { id: reviewId }); } catch (_) {}
+    return { success: true };
+  } catch (e) {
+    console.error('deleteReview error', e);
+    return { success: false, error: e.message || String(e) };
+  }
+}

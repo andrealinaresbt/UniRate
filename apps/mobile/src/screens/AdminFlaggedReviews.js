@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndi
 import { fetchIsAdmin } from '../services/AuthService';
 import { useAuth } from '../services/AuthContext';
 import { getFlaggedReviews, dismissReportsForReview } from '../services/reportService';
+// NUEVO: utilidades para borrar reportes / restaurar / eliminar reseña
+import { purgeReportsForReview, unhideReview, deleteReview } from '../services/reportService';
 
 export default function AdminFlaggedReviews({ navigation }) {
   const { user } = useAuth();
@@ -28,25 +30,63 @@ export default function AdminFlaggedReviews({ navigation }) {
     setLoading(true);
     const res = await getFlaggedReviews();
     if (res.success) setReviews(res.data || []);
-    else Alert.alert('Error', res.error || 'No se pudo cargar reseñas marcadas');
+    else Alert.alert('Error', res.error || 'No se pudieron cargar las reseñas ocultadas');
     setLoading(false);
   };
 
+  // === RESTAURAR: borra reportes y vuelve visible ===
   const handleRestore = async (reviewId) => {
-    Alert.alert('Restaurar reseña', '¿Confirmas que deseas restaurar esta reseña y descartar los reportes?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sí, restaurar', onPress: async () => {
-        setLoading(true);
-        const r = await dismissReportsForReview(reviewId);
-        setLoading(false);
-        if (r.success) {
-          Alert.alert('Hecho', 'La reseña fue restaurada.');
-          fetchList();
-        } else {
-          Alert.alert('Error', r.error || 'No se pudo restaurar');
+    Alert.alert(
+      'Restaurar reseña',
+      'Se eliminarán todos los reportes de esta reseña y volverá a mostrarse. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, restaurar',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              // si quieres mantener el "histórico", puedes dejar "dismiss"; pero aquí pediste **eliminar**
+              await purgeReportsForReview(reviewId);
+              await unhideReview(reviewId);
+              Alert.alert('Hecho', 'Reseña restaurada y reportes eliminados.');
+              await fetchList();
+            } catch (e) {
+              Alert.alert('Error', 'No se pudo restaurar la reseña.');
+            } finally {
+              setLoading(false);
+            }
+          }
         }
-      } }
-    ]);
+      ]
+    );
+  };
+
+  // === ELIMINAR: borra reportes y borra la reseña ===
+  const handleDelete = async (reviewId) => {
+    Alert.alert(
+      'Eliminar reseña',
+      'Se eliminarán todos los reportes y la reseña será borrada permanentemente. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await purgeReportsForReview(reviewId);
+              await deleteReview(reviewId);
+              Alert.alert('Hecho', 'Reseña y reportes eliminados.');
+              await fetchList();
+            } catch (e) {
+              Alert.alert('Error', 'No se pudo eliminar la reseña.');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (checking) return (
@@ -74,9 +114,14 @@ export default function AdminFlaggedReviews({ navigation }) {
                 <Text key={rep.id} style={s.reportRow}>• {rep.reason} — {rep.status || 'pending'}</Text>
               ))}
             </View>
-            <View style={{ justifyContent: 'center' }}>
-              <TouchableOpacity style={s.btn} onPress={() => handleRestore(item.id)}>
+
+            {/* NUEVO: dos botones */}
+            <View style={{ justifyContent: 'center', gap: 8 }}>
+              <TouchableOpacity style={s.btnOk} onPress={() => handleRestore(item.id)}>
                 <Text style={s.btnTxt}>Restaurar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.btnDanger} onPress={() => handleDelete(item.id)}>
+                <Text style={s.btnTxt}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -99,6 +144,7 @@ const s = StyleSheet.create({
   comment: { color: '#374151', marginTop: 6 },
   meta: { color: '#6b7280', marginTop: 8 },
   reportRow: { color: '#6b7280', fontSize: 13 },
-  btn: { backgroundColor: '#10b981', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
+  btnOk: { backgroundColor: '#10b981', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, minWidth: 108, alignItems: 'center' },
+  btnDanger: { backgroundColor: '#ef4444', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, minWidth: 108, alignItems: 'center' },
   btnTxt: { color: '#fff', fontWeight: '700' }
 });
