@@ -1,6 +1,6 @@
 // apps/mobile/src/services/reviewService.js
-import { supabase } from './supabaseClient';
 import { CourseProfessorService } from './courseProfessorService'; // opcional: si no existe, el fallback interno se encarga
+import { supabase } from './supabaseClient';
 
 
 // === Word filter ===
@@ -619,7 +619,7 @@ export async function getReviewById(id) {
     .from('reviews')
     .select(`
       id, created_at, score, difficulty, would_take_again, comment, trimester,
-      professor_id, course_id, user_id,
+      professor_id, course_id, user_id, is_anonymous,
       professors ( id, full_name ),
       courses ( id, name, code )
     `)
