@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { useAuth } from '../services/AuthContext';
-import { VoteService } from '../services/voteService';
 import { MaterialIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../services/AuthContext';
+import { VoteService } from '../services/voteService';
 
 const COLORS = {
   bg: '#F6F7F8',
