@@ -21,6 +21,7 @@ import SearchResultItem from "../components/SearchResultItem";
 import BackHeader from "../components/BackHeader";
 import FilterModal from "../components/FilterModal";
 import FloatingReviewButton from "../components/FloatingReviewButton";
+import AISummaryCard from "../components/AISummaryCard";
 const COLORS = {
   seasalt: "#F6F7F8",
   utOrange: "#FF8200",
@@ -371,6 +372,14 @@ export default function ProfessorProfile({ navigation }) {
               <Text style={styles.statValue}>{wouldTakeAgain ?? "N/A"}%</Text>
             </View>
           </View>
+
+          {/* Resumen generado por IA */}
+          <AISummaryCard
+            entityType="professor"
+            entityId={professorId}
+            reviews={reviews}
+            entityName={professor?.full_name}
+          />
 
           {topTags && topTags.length > 0 && (
             <>
