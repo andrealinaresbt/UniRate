@@ -1,23 +1,17 @@
-// Robust polyfill for environments that lack SharedArrayBuffer (helps avoid
-// runtime startup errors caused by some native modules or JS libs that check
-// for it). This runs on web (window/self), Node-like (global), and globalThis.
-// NOTE: Lightweight workaround for development only. Prefer a proper fix for
-// production (enable SharedArrayBuffer or remove the depending module).
-(() => {
+// Quick polyfill for environments that lack SharedArrayBuffer (helps avoid runtime
+// startup errors caused by some native modules or JS libs that check for it).
+// NOTE: This is a lightweight workaround for development/testing only. Prefer a
+// proper fix (remove the module that requires SharedArrayBuffer, or enable the
+// feature on the target runtime) for production.
+if (typeof global !== 'undefined' && typeof global.SharedArrayBuffer === 'undefined') {
 	try {
-		const root = (typeof globalThis !== 'undefined' && globalThis)
-			|| (typeof global !== 'undefined' && global)
-			|| (typeof self !== 'undefined' && self)
-			|| (typeof window !== 'undefined' && window);
-		if (root && typeof root.SharedArrayBuffer === 'undefined') {
-			// Use ArrayBuffer as a minimal stand-in so modules that check existence
-			// won't crash. This does NOT provide the same concurrency semantics.
-			root.SharedArrayBuffer = root.ArrayBuffer;
-		}
+		// Use ArrayBuffer as a minimal stand-in so modules that check existence won't crash.
+		// This does NOT provide the same concurrency semantics as SharedArrayBuffer.
+		global.SharedArrayBuffer = global.ArrayBuffer;
 	} catch (e) {
-		// ignore failures in polyfill
+		// ignore
 	}
-})();
+}
 
 import { registerRootComponent } from 'expo';
 import App from './App';

@@ -1,9 +1,9 @@
-import { MaterialIcons as Icon } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../services/AuthContext';
 import { VoteService } from '../services/voteService';
+import { MaterialIcons as Icon } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const COLORS = {
   bg: '#F6F7F8',
@@ -144,6 +144,7 @@ export default function FancyReviewCard({ review }) {
           <Text style={styles.subtitle}>
             {courseCode ? `${courseCode} · ` : ''}{courseName}
           </Text>
+          <Text style={styles.date}>{`Trimestre ${trimester} • ${created}`}</Text>
         </View>
         <View style={styles.badgeScore}>
           <Text style={styles.badgeScoreValue}>{Number(score).toFixed(1)}</Text>

@@ -24,7 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../services/AuthContext';
 import { ProfessorService } from '../services/professorService';
 import { markReviewWritten } from '../services/ReviewAccess';
-import { getReviewById, ReviewService, ReviewValidators, updateReview } from '../services/reviewService';
+import { getReviewById, ReviewService, updateReview, ReviewValidators } from '../services/reviewService';
 import { EventBus } from '../utils/EventBus';
 
 //importa helpers para cruzar Profesor↔Materia
@@ -124,7 +124,6 @@ export default function NuevaResenaScreen() {
   const [volveria, setVolveria] = useState(false);
   const [comentario, setComentario] = useState('');
   const [etiquetas, setEtiquetas] = useState([]);
-  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // UI
   const [loading, setLoading] = useState(true);
@@ -204,7 +203,6 @@ export default function NuevaResenaScreen() {
       setVolveria(!!editReview.volveria || !!editReview.would_take_again);
       setComentario(editReview.comentario ?? editReview.comment ?? '');
       setEtiquetas(Array.isArray(editReview.etiquetas) ? editReview.etiquetas : (editReview.tags || []));
-      setIsAnonymous(!!editReview.is_anonymous);
     } catch (_) {}
   }, [editReview]);
 
@@ -225,7 +223,6 @@ export default function NuevaResenaScreen() {
           setVolveria(!!d.volveria);
           setComentario(d.comentario ?? '');
           setEtiquetas(Array.isArray(d.etiquetas) ? d.etiquetas : []);
-          setIsAnonymous(!!d.is_anonymous);
         }
       } catch (_) {}
     })();
@@ -244,7 +241,6 @@ export default function NuevaResenaScreen() {
       volveria,
       comentario,
       etiquetas,
-      isAnonymous,
     };
     AsyncStorage.setItem('draft_review', JSON.stringify(payload));
   }, [
@@ -257,7 +253,6 @@ export default function NuevaResenaScreen() {
     volveria,
     comentario,
     etiquetas,
-    isAnonymous,
     editReview,
   ]);
 
@@ -392,7 +387,6 @@ export default function NuevaResenaScreen() {
       difficulty: parseInt(dificultad, 10),
       comment: comentario,
       would_take_again: volveria,
-      is_anonymous: isAnonymous,
     };
 
     const withTimeout = (p, ms = 15000) =>
@@ -700,17 +694,6 @@ export default function NuevaResenaScreen() {
                 );
               })}
             </View>
-              <View style={styles.row}>
-                <Text style={styles.labelInline}>Reseña anónima</Text>
-                <Switch
-                  value={isAnonymous}
-                  onValueChange={setIsAnonymous}
-                  trackColor={{ true: COLORS.secondary, false: '#C8CCD4' }}
-                  thumbColor={isAnonymous ? COLORS.accent : COLORS.white}
-                />
-            </View>
-            <Text style={styles.helper}>Al activar esta opción, tu identidad no será visible para otros usuarios.</Text>
-            
             {/* Botón EN EL CONTENIDO (no fijo) */}
             <TouchableOpacity
               style={[styles.button, (submitting || commentError) && { opacity: 0.6 }]}
@@ -790,8 +773,8 @@ export default function NuevaResenaScreen() {
                     data={filteredProfesores}
                     keyExtractor={(item) => String(item.id)}
                     keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"          
-                    onScrollBeginDrag={Keyboard.dismiss}  
+                    keyboardDismissMode="on-drag"          // 👈 arrastrando se oculta el teclado
+                    onScrollBeginDrag={Keyboard.dismiss}   // 👈 en cuanto scrolleas, se oculta
                     renderItem={({ item }) => (
                       <TouchableOpacity
                         style={styles.modalItem}
@@ -973,7 +956,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 0,
+    marginBottom: 8,
   },
   helper: {
     fontSize: 12,
@@ -1071,7 +1054,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
   },
   buttonText: { color: COLORS.white, fontWeight: '700' },
 
