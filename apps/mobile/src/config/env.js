@@ -11,8 +11,10 @@ export const ENV = {
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzaXdjdXNvbGNhaWN1eGhua2NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNjM4ODIsImV4cCI6MjA3NDgzOTg4Mn0.47wIP77NwDL01W3jAVFNTn4y8l7p8zmFt84kig3FVvo',
 
   // Google Gemini AI
-  // Obtén tu API key gratuita en: https://makersuite.google.com/app/apikey
-  GEMINI_API_KEY: 'AIzaSyB0rEnD9BWRmIQgf49-bWeTw1lVsHTPnLE',
+  // IMPORTANTE: Cada desarrollador debe crear su propia API key gratuita
+  // Obtén tu API key en: https://aistudio.google.com/app/apikey
+  // Y agrégala en un archivo .env.local (ver .env.example)
+  GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY || '',
 };
 
 // Validar que las variables requeridas estén presentes
