@@ -1,13 +1,13 @@
 // components/MenuModal.js 
 import React from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Pressable,
-  Alert
+ Modal,
+ View,
+ Text,
+ TouchableOpacity,
+ StyleSheet,
+ Pressable,
+ Alert
 } from 'react-native';
 // Asegúrate de que deleteUserAccountAndData esté disponible en este archivo
 import { signOut, deleteUserAccountAndData } from '../services/AuthService'; 
@@ -15,8 +15,8 @@ import { signOut, deleteUserAccountAndData } from '../services/AuthService';
 // Componente helper para los ítems del menú.
 const MenuItem = ({ text, onPress, isDestructive }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-    <Text style={[styles.menuItemText, isDestructive && styles.destructiveText]}>{text}</Text>
-  </TouchableOpacity>
+   <Text style={[styles.menuItemText, isDestructive && styles.destructiveText]}>{text}</Text>
+ </TouchableOpacity>
 );
 
 export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
@@ -62,37 +62,37 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
 
   return (
     <Modal
-      animationType="fade"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
+     animationType="fade"
+     transparent
+     visible={visible}
+     onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.menuContainer}>
-          <Text style={styles.menuTitle}>UniRate</Text>
+     <Pressable style={styles.backdrop} onPress={onClose}>
+       <Pressable style={styles.menuContainer}>
+         <Text style={styles.menuTitle}>UniRate</Text>
 
           {!user ? (
             <>
               <MenuItem
-                text="Iniciar sesión"
-                onPress={() => { onClose(); navigation.navigate('Login'); }}
+               text="Iniciar sesión"
+               onPress={() => { onClose(); navigation.navigate('Login'); }}
               />
-              <MenuItem text="Configuración" onPress={onClose} />
+             <MenuItem text="Configuración" onPress={onClose} />
             </>
           ) : (
             <>
-              <MenuItem text="Mis reseñas" onPress={() => {
-                  onClose();
-                  navigation.navigate('myReviews');
+             <MenuItem text="Mis reseñas" onPress={() => {
+                 onClose();
+                 navigation.navigate('myReviews');
                 }} />
-              <MenuItem text="Favoritos" onPress={() => {
-                  onClose();
-                  navigation.navigate('Favorites');
+             <MenuItem text="Favoritos" onPress={() => {
+                 onClose();
+                 navigation.navigate('Favorites');
                 }} />
               
               <MenuItem
-                text="Publicar Reseña"
-                onPress={() => {
+               text="Publicar Reseña"
+               onPress={() => {
                   onClose();
                   navigation.navigate('NuevaResena');
                 }}
@@ -100,7 +100,7 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
 
               {isAdmin && (
                 <>
-                  <View style={{ height: 12 }} />
+                 <View style={{ height: 12 }} />
                   <Text style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>Admin</Text>
                   <MenuItem
                     text="Panel admin"
