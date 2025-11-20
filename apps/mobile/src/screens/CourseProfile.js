@@ -21,6 +21,7 @@ import SearchResultItem from "../components/SearchResultItem";
 import BackHeader from "../components/BackHeader";
 import FilterModal from "../components/FilterModal";
 import FloatingReviewButton from "../components/FloatingReviewButton";
+import AISummaryCard from "../components/AISummaryCard";
 
 const COLORS = {
   seasalt: "#F6F7F8",
@@ -355,6 +356,14 @@ export default function CourseProfile({ navigation }) {
               <Text style={styles.statValue}>{reviews.length}</Text>
             </View>
           </View>
+
+          {/* Resumen generado por IA */}
+          <AISummaryCard
+            entityType="course"
+            entityId={courseId}
+            reviews={reviews}
+            entityName={course?.name || courseNameParam}
+          />
 
           {/* SECCIÓN DE PROFESORES - CORREGIDA */}
           {Array.isArray(professorsAggregated) && professorsAggregated.length > 0 && (

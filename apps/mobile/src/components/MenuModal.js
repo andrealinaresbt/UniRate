@@ -11,10 +11,11 @@ import {
 } from 'react-native';
 import { signOut, deleteUserAccountAndData } from '../services/AuthService';
 
-const MenuItem = ({ text, onPress }) => (
+// Componente helper para los ítems del menú.
+const MenuItem = ({ text, onPress, isDestructive }) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-    <Text style={styles.menuItemText}>{text}</Text>
-  </TouchableOpacity>
+   <Text style={[styles.menuItemText, isDestructive && styles.destructiveText]}>{text}</Text>
+ </TouchableOpacity>
 );
 
 export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
