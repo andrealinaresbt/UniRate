@@ -1,15 +1,16 @@
 // components/MenuModal.js 
 import React from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Pressable,
-  Alert
+ Modal,
+ View,
+ Text,
+ TouchableOpacity,
+ StyleSheet,
+ Pressable,
+ Alert
 } from 'react-native';
-import { signOut, deleteUserAccountAndData } from '../services/AuthService';
+// Asegúrate de que deleteUserAccountAndData esté disponible en este archivo
+import { signOut, deleteUserAccountAndData } from '../services/AuthService'; 
 
 // Componente helper para los ítems del menú.
 const MenuItem = ({ text, onPress, isDestructive }) => (
@@ -28,93 +29,108 @@ export const MenuModal = ({ visible, onClose, navigation, user, isAdmin }) => {
     }
   };
 
+  // FUNCIÓN PARA MANEJAR LA ELIMINACIÓN DE LA CUENTA
   const handleDeleteAccount = () => {
-    onClose();
+    onClose(); // Cerrar el menú modal primero
 
-    Alert.alert(
-      '⚠️ Eliminar Cuenta',
-      'Estás a punto de eliminar tu cuenta de forma PERMANENTE. Esto borrará todas tus reseñas y tu historial. Esta acción NO se puede deshacer. ¿Deseas continuar?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar permanentemente',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteUserAccountAndData(); 
-              Alert.alert('Éxito', 'Tu cuenta ha sido eliminada permanentemente.');
-              navigation.navigate('Home');
-            } catch (e) {
-              console.error('ERROR Error durante la eliminación de cuenta:', e);
-              Alert.alert('Error al eliminar', e.message || 'Ocurrió un error al intentar eliminar la cuenta.');
-            }
-          },
-        },
-      ]
-    );
-  };
+    Alert.alert(
+      '⚠️ Eliminar Cuenta',
+      'Estás a punto de eliminar tu cuenta de forma PERMANENTE. Esto borrará todas tus reseñas y tu historial. Esta acción NO se puede deshacer. ¿Deseas continuar?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: '❌ Eliminar permanentemente',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // LLAMADA AL SERVICIO: Esto activa el RPC en Supabase
+              await deleteUserAccountAndData(); 
+              Alert.alert('Éxito', 'Tu cuenta ha sido eliminada permanentemente.');
+              navigation.navigate('Home'); // Navega a la pantalla de inicio o login
+            } catch (e) {
+              console.error(e);
+              Alert.alert('Error al eliminar', e.message || 'Ocurrió un error al intentar eliminar la cuenta.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Modal
-      animationType="fade"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
+     animationType="fade"
+     transparent
+     visible={visible}
+     onRequestClose={onClose}
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.menuContainer}>
-          <Text style={styles.menuTitle}>UniRate</Text>
+     <Pressable style={styles.backdrop} onPress={onClose}>
+      <Pressable style={styles.menuContainer}>
+        <Text style={styles.menuTitle}>UniRate</Text>
+
+          {/* SIEMPRE visible, logueado o no */}
+          <MenuItem
+            text="Preguntas frecuentes"
+            onPress={() => {
+              onClose();
+              navigation.navigate('FAQ'); // nombre del screen en tu navigator
+            }}
+          />
 
           {!user ? (
             <>
               <MenuItem
-                text="Iniciar sesión"
-                onPress={() => { onClose(); navigation.navigate('Login'); }}
+               text="Iniciar sesión"
+               onPress={() => { onClose(); navigation.navigate('Login'); }}
               />
-              <MenuItem text="Configuración" onPress={onClose} />
+             <MenuItem text="Configuración" onPress={onClose} />
             </>
           ) : (
             <>
-              <MenuItem text="Mis reseñas" onPress={() => {
+             <MenuItem text="Mis reseñas" onPress={() => {
                   onClose();
                   navigation.navigate('myReviews');
-                }} />
-              <MenuItem text="Favoritos" onPress={() => {
+                  }} />
+             <MenuItem text="Favoritos" onPress={() => {
                   onClose();
                   navigation.navigate('Favorites');
-                }} />
-
+                  }} />
               
-              <MenuItem
+               <MenuItem
                 text="Publicar Reseña"
                 onPress={() => {
-                  onClose();
-                  navigation.navigate('NuevaResena');
-                }}
-              />
+                   onClose();
+                   navigation.navigate('NuevaResena');
+                 }}
+               />
 
-              {isAdmin && (
-                <>
+               {isAdmin && (
+                 <>
                   <View style={{ height: 12 }} />
-                  <Text style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>Admin</Text>
-                  <MenuItem
-                    text="Panel admin"
-                    onPress={() => { onClose(); navigation.navigate('Admin'); }}
-                  />
-                </>
-              )}
-              <MenuItem // BOTÓN DE BORRAR CUENTA AGREGADO
-                text="🗑️ Borrar Cuenta"
-                isDestructive
-                onPress={handleDeleteAccount}/>
+                   <Text style={{ color: '#888', fontSize: 12, marginBottom: 6 }}>Admin</Text>
+                   <MenuItem
+                     text="Panel admin"
+                     onPress={() => { onClose(); navigation.navigate('Admin'); }}
+                   />
+                 </>
+               )}
 
-              <MenuItem
-                text="Cerrar Sesión"
-                onPress={handleLogout}
-              />
+              <View style={{ height: 20 }} />
+
+              {/* OPCIÓN DE BORRAR CUENTA (DESTRUCTIVA) */}
+               <MenuItem
+                 text="🗑️ Borrar Cuenta"
+                 isDestructive
+                 onPress={handleDeleteAccount}
+               />
+
+               <MenuItem
+                 text="Cerrar Sesión"
+                 onPress={handleLogout}
+               />
             </>
           )}
         </Pressable>
@@ -157,4 +173,9 @@ const styles = StyleSheet.create({
     fontSize: 18, 
     color: '#333' 
   },
+  // ESTILO DESTRUCTIVO para "Borrar Cuenta"
+  destructiveText: {
+    color: '#ef4444', // Color rojo
+    fontWeight: 'bold',
+  }
 });

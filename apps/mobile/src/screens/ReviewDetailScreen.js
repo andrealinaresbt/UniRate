@@ -95,6 +95,7 @@ export default function ReviewDetailScreen() {
 
   useEffect(() => {
     let mounted = true;
+    console.log('Review ID:', reviewId);
     (async () => {
       try {
         if (!reviewId) {
@@ -169,7 +170,7 @@ export default function ReviewDetailScreen() {
             <View style={styles.chip}>
               <Text style={styles.chipText}>Trimestre {r?.trimester || '-'}</Text>
             </View>
-            {r?.user?.full_name ? (
+            {r?.user?.full_name && !r?.is_anonymous ? (
               <View style={styles.chip}>
                 <Text style={styles.chipText}>Autor: {r.user.full_name}</Text>
               </View>

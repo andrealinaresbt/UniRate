@@ -144,7 +144,6 @@ export default function FancyReviewCard({ review }) {
           <Text style={styles.subtitle}>
             {courseCode ? `${courseCode} · ` : ''}{courseName}
           </Text>
-          <Text style={styles.date}>{`Trimestre ${trimester} • ${created}`}</Text>
         </View>
         <View style={styles.badgeScore}>
           <Text style={styles.badgeScoreValue}>{Number(score).toFixed(1)}</Text>
